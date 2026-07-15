@@ -1,0 +1,64 @@
+---
+description: Caching strategy across ingestion, Postgres, and IGDB enrichment
+alwaysApply: true
+---
+
+# Caching Strategy
+
+Three data tiers, three owners. Don't collapse them into one cache layer.
+
+## Tier 1 — Deal data (Postgres is the cache)
+
+- CheapShark, ITAD, and scrapers run **only** from cron routes. Never from pages.
+- Postgres is the reuse layer for deal data between cron runs. Do not also cache
+  ingestion API responses in Next's cache — that duplicates state and drifts.
+- After a successful upsert, invalidate deal **reads** with
+  `revalidateTag('deals', 'max')` from the cron route (`050-nextjs-routes.mdc`).
+- Deal writes go straight to Postgres; deal reads go through cached query
+  functions (tier 2).
+
+## Tier 2 — Deal reads (`use cache` on DB queries)
+
+- Enable `cacheComponents: true` in `next.config.ts`.
+- Wrap read-only DB queries in functions with `'use cache'`, `cacheTag('deals')`,
+  and a short `cacheLife` profile (e.g. `'hours'` — deals refresh on cron, not
+  continuously).
+- Keep uncached query functions in `lib/db/deals.ts` for cron upserts and tests.
+  Cached wrappers live in `lib/db/deals-cached.ts`.
+- Invalidate on ingestion success (`revalidateTag('deals', 'max')`), not on a
+  fixed page TTL. Time-based `cacheLife` is a safety net, not the primary
+  freshness mechanism for deals.
+
+## Tier 3 — IGDB enrichment (Next cache only, never Postgres)
+
+- Game metadata is not persisted (`060-enrichment.mdc`). Cache it with
+  `'use cache'` only.
+- Tag per game: `cacheTag(\`igdb:game:${steamAppId}\`)`.
+- Use `cacheLife('days')` — metadata changes rarely; no write-path invalidation.
+- **Cache misses too**: if IGDB has no match, cache `null` with the same tag/TTL
+  so repeated views don't re-query a known dead end.
+- **Dedupe before calling IGDB**: collect unique `steamAppId`s for the current
+  view, then one batch multiquery — not N sequential calls in a loop.
+- Batch entry point: `getGameMetadataForSteamAppIds(ids)` in
+  `lib/enrichment/get-game-metadata.ts`. Detail pages call it with one id;
+  listing pages pass the page's unique ids. Same function, same per-id tags.
+- IGDB OAuth tokens are **process-memory** only (`lib/enrichment/igdb-auth.ts`),
+  refreshed on expiry — not Next cache, not Postgres.
+
+## Composition rules
+
+- Never merge `NormalizedDeal` and `GameMetadata` into one cached object. Fetch
+  deals from cached DB query, enrich in the page/component, pass as separate props.
+- Listing: cached `listDeals()` → unique steam ids → cached batch IGDB → render.
+- Detail: cached `getDealById()` → cached IGDB for that id → render.
+- If IGDB credentials are missing, enrichment returns `null` gracefully; deal
+  pages still render from Postgres.
+
+## What not to do
+
+- No Redis/KV for this project until in-memory + Postgres + Next cache provably
+  isn't enough (traffic or multi-instance stale reads).
+- No `fetch(..., { next: { revalidate: N } })` on ingestion sources.
+- No client-side fetching of IGDB or deal sources.
+- No caching user-specific or request-header-dependent data in shared `'use cache'`
+  scopes — pass values as arguments if needed.

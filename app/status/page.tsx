@@ -5,6 +5,7 @@ import {
   type SourceHealthStatus,
 } from "@/lib/db/source-health";
 import { DEAL_SOURCES } from "@/types/deal-source";
+import { Suspense } from "react";
 
 function statusBadgeClass(status: SourceHealthStatus | "unknown"): string {
   switch (status) {
@@ -52,7 +53,21 @@ function mergeSourceRows(rows: SourceHealthRow[]) {
   });
 }
 
-export default async function StatusPage() {
+export default function StatusPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto px-6 py-12 text-zinc-600 dark:text-zinc-400">
+          Loading status…
+        </div>
+      }
+    >
+      <StatusContent />
+    </Suspense>
+  );
+}
+
+async function StatusContent() {
   const sourceRows = mergeSourceRows(await listSourceHealth());
 
   return (

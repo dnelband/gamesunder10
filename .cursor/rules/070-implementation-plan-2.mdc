@@ -6,15 +6,15 @@ alwaysApply: true
 # Status Dashboard (`/status`)
 
 There is no `IMPLEMENTATION_PLAN.md`. Both source health and implementation
-progress live in the app itself, rendered at `src/app/status/page.tsx`, backed
+progress live in the app itself, rendered at `app/status/page.tsx`, backed
 by two different kinds of data with two different owners:
 
 ## Source Health — automatic, written by the cron jobs themselves
 
 - Table: `source_health` (see `040-database.mdc`) — one row per source, holding
   `status`, `lastSuccessAt`, `lastFailureAt`, `lastError`, `consecutiveFailures`.
-- Every cron route (`src/app/api/cron/<source>/route.ts`) calls
-  `recordSourceRun(source, result)` from `src/lib/db/source-health.ts` after
+- Every cron route (`app/api/cron/<source>/route.ts`) calls
+  `recordSourceRun(source, result)` from `lib/db/source-health.ts` after
   every run — success or failure, no exceptions. This is what actually answers
   "which scraper is broken" — it's derived from real runs, not a note someone
   remembered to update.
@@ -23,11 +23,11 @@ by two different kinds of data with two different owners:
   a `disabledReason` field rather than faking a failure record.
 - Status derivation: `ok` if the last run succeeded, `degraded` if
   `consecutiveFailures` is 1–2, `broken` at 3+. Keep this logic in one place
-  (`src/lib/db/source-health.ts`), not duplicated in the dashboard component.
+  (`lib/db/source-health.ts`), not duplicated in the dashboard component.
 
 ## Implementation Plan — manual, edited by Cursor as code
 
-- Data file: `src/lib/implementation-plan-data.ts`, exporting a typed array of
+- Data file: `lib/implementation-plan-data.ts`, exporting a typed array of
   phases and tasks (status: `planned` | `in_progress` | `done` | `blocked`).
   This is genuinely planning data, not runtime data, so it's a plain TS file
   Cursor edits directly — not a database table.
@@ -41,7 +41,7 @@ by two different kinds of data with two different owners:
 
 ## The dashboard route itself
 
-- `src/app/status/page.tsx`: Server Component, queries `source_health` directly
+- `app/status/page.tsx`: Server Component, queries `source_health` directly
   (no caching — this must always reflect live state, so don't wrap it in
   `use cache`) and imports `implementation-plan-data.ts` statically.
 - Two sections: a source health table (status badge, last success/failure,

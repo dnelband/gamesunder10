@@ -18,8 +18,8 @@ PC storefronts (via CheapShark/IsThereAnyDeal APIs) and console storefronts
   app reads deal data only from Postgres, never live from source APIs on request.
 - **Enrichment layer**: game metadata (description, genres, cover art, etc.) is
   fetched live from IGDB at render time and never persisted — see
-  `060-enrichment.mdc`. This is the one deliberate exception to "reads come from
-  Postgres," and it's an exception by design, not a shortcut.
+  `060-enrichment.mdc`. Cached with Next `use cache`, not Postgres — see
+  `080-caching.mdc`.
 - **Refresh**: scheduled jobs (cron route handlers or Vercel Cron), not on-request
   fetching. Each source job is isolated and must not crash the others on failure.
 - **App**: Server Components for data display, filtering/sorting done server-side
@@ -31,10 +31,11 @@ PC storefronts (via CheapShark/IsThereAnyDeal APIs) and console storefronts
 - Every ingestion source must fail independently — one broken scraper (esp. eShop)
   must never take down the pipeline or block other sources from updating.
 - Prices are normalized to EUR at ingestion time, not display time.
-- We do not store game metadata — no descriptions, genres, screenshots, ratings,
-  or other catalog data in Postgres, ever. `NormalizedDeal` and `GameMetadata`
-  stay two separate types with two separate lifecycles; see `020-data-model.mdc`
-  and `060-enrichment.mdc`.
+- We do not store rich game metadata in Postgres — no descriptions, screenshots,
+  or developer fields. `NormalizedDeal.genres` and `NormalizedDeal.rating` are
+  compact snapshots (source-first, IGDB fallback at ingestion) — see
+  `020-data-model.mdc`. Other catalog fields stay in live IGDB enrichment at render
+  time (`060-enrichment.mdc`).
 - I (David) write the logic myself for anything non-boilerplate — use Cursor for
   scaffolding, types, repetitive glue code, and catching mistakes, not for
   designing scraper resilience strategy or schema decisions. Ask before generating

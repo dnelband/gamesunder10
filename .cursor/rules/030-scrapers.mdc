@@ -1,9 +1,9 @@
 ---
 description: Rules for console-store scrapers (PSN, Xbox, eShop)
 globs:
-  - "src/lib/sources/psn/**"
-  - "src/lib/sources/xbox/**"
-  - "src/lib/sources/eshop/**"
+  - "lib/sources/psn/**"
+  - "lib/sources/xbox/**"
+  - "lib/sources/eshop/**"
 ---
 
 # Scraper Rules
@@ -25,6 +25,10 @@ every scraper as hostile input.
   Don't hammer the endpoint just because there's no published limit.
 - No hardcoded auth tokens or cookies committed to the repo, even ones scraped from
   a public page — pull from env if a session is ever needed.
+- Map `distributionFormat` (`020-data-model.mdc`) in every console normalizer.
+  Console listings often sell both physical and digital — extract format from API
+  fields first, title/edition strings second, `'unknown'` if ambiguous. Do not
+  default console deals to `'digital'`.
 
 ## When a scraper breaks
 

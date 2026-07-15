@@ -8,10 +8,16 @@ export default function Home() {
           dashboard.
         </p>
         <a
-          href="/status"
+          href="/deals"
           className="inline-flex h-11 items-center justify-center rounded-full bg-foreground px-6 text-sm font-medium text-background transition-colors hover:opacity-90"
         >
-          Open status dashboard
+          Browse deals
+        </a>
+        <a
+          href="/status"
+          className="inline-flex h-11 items-center justify-center rounded-full border border-solid border-black/[.08] px-6 text-sm font-medium transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+        >
+          Status dashboard
         </a>
       </main>
     </div>

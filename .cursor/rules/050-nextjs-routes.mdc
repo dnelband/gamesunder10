@@ -1,7 +1,7 @@
 ---
 description: Next.js 16 App Router and cron/API route conventions
 globs:
-  - "src/app/**"
+  - "app/**"
 ---
 
 # Next.js 16 Conventions
@@ -32,7 +32,7 @@ globs:
   only for interactive filter/sort controls — keep them thin, push state to the
   URL (searchParams) rather than local-only state so filtered views are shareable
   and linkable.
-- Ingestion jobs live under `src/app/api/cron/<source>/route.ts`, one route per
+- Ingestion jobs live under `app/api/cron/<source>/route.ts`, one route per
   source, each calling that source's `fetchDeals()` + upsert independently.
   Protect these with a shared secret header check (`CRON_SECRET`), not just
   relying on the platform's cron auth.
@@ -43,9 +43,11 @@ globs:
 - No source's cron route imports another source's module — isolation from
   `030-scrapers.mdc` applies here too; one route timing out or 500ing must not
   affect the others.
-- Data fetching for pages goes through the DB query layer (`src/lib/db`), never
+- Data fetching for pages goes through the DB query layer (`lib/db`), never
   a direct call to CheapShark/ITAD/scrapers from a page or route handler outside
   the cron jobs.
-- Use `revalidatePath`/`revalidateTag` after a successful ingestion run instead of
+- Use `revalidateTag`/`revalidatePath` after a successful ingestion run instead of
   time-based ISR guessing, so the site updates right after a refresh completes
-  rather than on a fixed timer.
+  rather than on a fixed timer. See `080-caching.mdc` for the full tier model.
+- Deal list/detail pages read through cached wrappers in `lib/db/deals-cached.ts`,
+  not raw DB queries, so `revalidateTag('deals', 'max')` from cron takes effect.

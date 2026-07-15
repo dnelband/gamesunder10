@@ -1,7 +1,7 @@
 ---
 description: Postgres schema and query conventions
 globs:
-  - "src/lib/db/**"
+  - "lib/db/**"
   - "drizzle/**"
   - "prisma/**"
 ---
@@ -20,6 +20,12 @@ globs:
   queries as if it weren't.
 - Index on `(price_eur)`, `(normalized_title)`, and `(steam_app_id)` at minimum
   once the table's live — `steam_app_id` is the enrichment lookup key.
+- When `distributionFormat` lands on `NormalizedDeal`, add a column and index if
+  console format filtering becomes common (`020-data-model.mdc`).
+- `genres`: store as `text[]` on `deals`, mirroring `NormalizedDeal.genres`. GIN
+  index if genre filtering goes live.
+- `rating` / `rating_source`: `double precision` + `text` nullable columns on
+  `deals`, mirroring `NormalizedDeal`. Index on `rating` if sort-by-score goes live.
 - Migrations are explicit files, checked in — no relying on `db push`/sync-on-boot
   for anything past local dev.
 - The `deals` table's columns mirror `NormalizedDeal` exactly — no
@@ -30,7 +36,7 @@ globs:
 ## `source_health` table
 
 Backs the `/status` dashboard (`070-implementation-plan.mdc`). One row per
-source, written only by `recordSourceRun()` in `src/lib/db/source-health.ts`,
+source, written only by `recordSourceRun()` in `lib/db/source-health.ts`,
 called from every cron route after every run:
 
 ```typescript

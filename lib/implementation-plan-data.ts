@@ -33,6 +33,11 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "/status dashboard (source health + plan)",
         status: "done",
       },
+      {
+        id: "caching-rules",
+        title: "Caching strategy (080-caching.mdc)",
+        status: "done",
+      },
     ],
   },
   {
@@ -42,7 +47,7 @@ export const implementationPlan: ImplementationPhase[] = [
       {
         id: "cheapshark",
         title: "CheapShark fetcher + normalizer",
-        status: "planned",
+        status: "done",
       },
       {
         id: "itad",
@@ -67,12 +72,13 @@ export const implementationPlan: ImplementationPhase[] = [
       {
         id: "cron-routes",
         title: "Cron routes per source (CRON_SECRET)",
-        status: "planned",
+        status: "in_progress",
+        notes: "CheapShark route done; others pending.",
       },
       {
         id: "deals-table",
         title: "deals table + upsert on ingestion",
-        status: "planned",
+        status: "done",
       },
     ],
   },
@@ -83,12 +89,30 @@ export const implementationPlan: ImplementationPhase[] = [
       {
         id: "deals-listing",
         title: "Deals listing page (server-side filters)",
+        status: "done",
+        notes: "Vertical slice listing live; filters still basic.",
+      },
+      {
+        id: "distribution-format",
+        title: "Physical vs digital indicator on deals",
         status: "planned",
+        notes: "Field + UI badge; critical for console sources (020-data-model.mdc).",
+      },
+      {
+        id: "deal-genres",
+        title: "Genre tags on deals (source first, IGDB fallback at cron)",
+        status: "done",
+      },
+      {
+        id: "deal-rating",
+        title: "Rating on deals (source first, IGDB fallback at cron)",
+        status: "done",
       },
       {
         id: "currency",
         title: "EUR conversion utility at ingestion",
-        status: "planned",
+        status: "done",
+        notes: "Fixed USD→EUR rate via USD_TO_EUR_RATE env; replace with live FX later.",
       },
     ],
   },
@@ -99,12 +123,13 @@ export const implementationPlan: ImplementationPhase[] = [
       {
         id: "igdb-auth",
         title: "IGDB Twitch OAuth + token cache",
-        status: "planned",
+        status: "done",
       },
       {
         id: "igdb-metadata",
         title: "Live game metadata on deal views",
-        status: "planned",
+        status: "done",
+        notes: "Requires IGDB_CLIENT_ID + IGDB_CLIENT_SECRET in .env.local.",
       },
     ],
   },

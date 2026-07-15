@@ -1,9 +1,9 @@
 ---
 description: The NormalizedDeal contract — apply whenever touching ingestion, scrapers, or DB schema
 globs:
-  - "src/lib/sources/**"
-  - "src/lib/db/**"
-  - "src/types/**"
+  - "lib/sources/**"
+  - "lib/db/**"
+  - "types/**"
 ---
 
 # Data Model
@@ -26,6 +26,11 @@ interface NormalizedDeal {
   url: string;
   imageUrl: string | null;  // the STORE's own thumbnail for this deal, not IGDB/RAWG art
   region: string | null;    // relevant for console stores
+  sourceReleaseDate: string | null; // ISO date from source API when available — sort key, not IGDB
+  distributionFormat: 'digital' | 'physical' | 'unknown'; // see Distribution format below
+  genres: string[];         // tag labels — source first, IGDB fallback at ingestion; see Genres below
+  rating: number | null;    // 0–100 normalized score — source first; see Rating below
+  ratingSource: 'metacritic' | 'steam' | 'store' | 'igdb' | null;
   fetchedAt: string;        // ISO timestamp
 }
 ```
@@ -33,25 +38,115 @@ interface NormalizedDeal {
 ## Rules
 
 - Currency conversion happens in the mapper, at ingestion time, using a single
-  shared exchange-rate utility (`src/lib/currency.ts`) — never inline conversion
+  shared exchange-rate utility (`lib/currency.ts`) — never inline conversion
   math in a source module.
 - `normalizedTitle` is what cross-source deduplication matches on. Don't dedupe on
   raw `title`.
 - If a source doesn't provide a field (e.g. eShop often lacks discount %), use
   `null`/`0` explicitly — never omit the field or fake a value.
-- New source? Add the mapper in `src/lib/sources/<source>/normalize.ts` and export
+- New source? Add the mapper in `lib/sources/<source>/normalize.ts` and export
   a single `fetchDeals(): Promise<NormalizedDeal[]>`. Nothing outside that folder
   should ever import the source's raw response types.
 - Populate `steamAppId` whenever the source exposes one (CheapShark/ITAD do
   directly; console sources generally won't). It's the preferred key for game
   enrichment lookups — see `060-enrichment.mdc`.
+- `url` must point at the **store's product page**, never an aggregator redirect
+  (no CheapShark/ITAD tracking URLs in `NormalizedDeal.url`). Each source builds
+  this in its own normalizer — see `lib/sources/cheapshark/store-url.ts`.
+- `sourceReleaseDate` is optional ISO date from the ingestion source when the API
+  exposes it (e.g. CheapShark `releaseDate`). Used for default listing sort only —
+  not IGDB catalog data. Do not backfill from enrichment.
 
-## Hard boundary: no game metadata on this type, ever
+## Distribution format (physical vs digital)
+
+Users need to know whether a deal is for a **physical** copy (disc/cartridge) or
+**digital** download. This matters most on console storefronts where both exist;
+PC deal aggregators are almost always digital but the field still applies.
+
+- Add `distributionFormat: 'digital' | 'physical' | 'unknown'` on `NormalizedDeal`
+  and mirror it on the `deals` table. Not implemented yet — add when the first
+  source needs it.
+- This is **deal/listing** data from the store ("what am I buying?"), not game
+  catalog metadata — it belongs on `NormalizedDeal`, not IGDB enrichment.
+- **Never guess.** Use `'unknown'` when the source doesn't expose format clearly.
+  Wrongly marking a physical listing as digital (or vice versa) is worse than
+  showing unknown.
+- **Per-source logic in the normalizer**, same pattern as store URLs:
+  - PC sources (CheapShark, ITAD, Steam-key stores): default `'digital'` only when
+    that source *never* sells physical copies for that listing type.
+  - Console sources (PSN, Xbox, eShop): read product-type / format fields from the
+    store JSON when available; fall back to title/edition heuristics only if
+    documented in that source's mapper (e.g. "Disc", "Cartridge", "Digital Edition").
+  - Mixed retailers (Amazon etc., if ever added): must distinguish per listing —
+    never source-level default.
+- **UI**: show a clear badge/label on deal cards and detail pages
+  (`Digital`, `Physical`, omit or `Format unknown` for `unknown`). Filter by format
+  is a follow-up once console sources are live.
+- **Dedup**: same game on the same store in both formats = two distinct deals
+  (different `sourceDealId`, possibly different prices). Do not collapse them.
+
+## Genres (tags on each deal)
+
+Each deal carries `genres: string[]` — short tag labels for UI chips and (later)
+SQL filtering. Goal: **avoid calling IGDB on every page view** once ingestion has
+filled them.
+
+**Priority (strict order):**
+
+1. **Store/source at ingestion** — each normalizer maps categories/tags/genres from
+   the listing or store API when exposed. Per-source logic in
+   `lib/sources/<source>/normalize.ts`. Prefer the store's own labels; normalize
+   to plain strings (trim, dedupe, stable casing for display).
+2. **IGDB at ingestion (fallback only)** — if `genres` is still empty after step 1
+   and `steamAppId` is set, the cron job may call IGDB once, copy `genres` from
+   `GameMetadata`, and persist on upsert. Batch by unique `steamAppId` per cron
+   run (`060-enrichment.mdc`). Never overwrite source-provided genres with IGDB.
+3. **Empty array** — if neither source nor IGDB (no `steamAppId`, no match): `[]`.
+   No fuzzy title lookup for genres.
+
+**Render time:** pages read `deal.genres` from Postgres for tags/filters. Do not
+re-fetch IGDB genres on the listing path when the deal already has tags.
+
+## Rating (score on each deal)
+
+Each deal carries a single **`rating: number | null`** — normalized to **0–100**
+(one number for UI: stars, badge, sort). Plus **`ratingSource`** for transparency
+(`metacritic`, `steam`, `store`, `igdb`, or `null`). Same goal as genres: fill at
+ingestion, read from Postgres on listing — no per-page IGDB calls for scores.
+
+**Priority (strict order):**
+
+1. **Store/source at ingestion** — per-source normalizer picks the best score the
+   listing exposes. Document priority **inside each source module** (e.g.
+   CheapShark: `metacriticScore` if &gt; 0 → `ratingSource: 'metacritic'`, else
+   `steamRatingPercent` if &gt; 0 → `ratingSource: 'steam'`). Console stores may
+   expose a store rating → `ratingSource: 'store'`. Normalize all to 0–100 at
+   map time — never store 0–5, 0–10, or percent in mixed scales on the deal row.
+2. **IGDB at ingestion (fallback only)** — if `rating` is still `null` after step 1
+   and `steamAppId` is set, cron copies `GameMetadata.rating` (IGDB aggregated,
+   already 0–100) with `ratingSource: 'igdb'`. **Batch with genre backfill** in one
+   IGDB round-trip per unique `steamAppId` — not separate requests per field.
+3. **`null`** — no score from source or IGDB. Do not invent or average multiple
+   sources into one number at render time.
+
+**Never overwrite** a source-provided rating with IGDB on upsert.
+
+**Render time:** listing/detail show `deal.rating` + `deal.ratingSource` from
+Postgres. Live IGDB on the detail page is for description, cover, screenshots only
+once rating is persisted — not to re-fetch a score the deal already has.
+
+**CheapShark note:** its deals API includes `metacriticScore` and
+`steamRatingPercent` — PC deals can get ratings **without IGDB** when those fields
+are present. IGDB is fallback when both are 0/missing.
+
+**Not on `NormalizedDeal`:** description, screenshots, developer — enrichment-only
+at render, never Postgres columns.
+
+## Hard boundary: full game catalog metadata
 
 `NormalizedDeal` describes a *deal* — what's on sale, where, for how much. It must
-never grow fields like `description`, `genres`, `screenshots`, `rating`,
-`releaseDate`, `developer`, or any other game-catalog attribute. That data comes
-from the live enrichment layer (`060-enrichment.mdc`), never from a source
-scraper/API mapper, and never gets persisted to Postgres. If a task seems to need
-one of these fields on a deal, the fix is an enrichment call at render time, not a
-new column.
+never grow fields like `description`, `screenshots`, `developer`, or other rich
+catalog attributes. **`genres` and `rating`/`ratingSource` are explicit exceptions**
+— compact snapshots for display/sort/filter, filled source-first then IGDB at
+ingestion. Everything else about the game comes from the enrichment layer
+(`060-enrichment.mdc`) at render time and is not persisted to Postgres.
