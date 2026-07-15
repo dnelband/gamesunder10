@@ -77,7 +77,7 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "Cron routes per source (CRON_SECRET)",
         status: "in_progress",
         notes:
-          "CheapShark + PSN routes + vercel.json schedules. ITAD/Xbox/eShop pending. Vercel Hobby: built-in crons may not run — use manual curl or external cron until Pro.",
+          "CheapShark + PSN routes. vercel.json: once daily on Hobby (06:00 + 06:30 UTC). More often: npm run cron locally or external cron.",
       },
       {
         id: "cron-orchestrator",
