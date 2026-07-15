@@ -48,6 +48,7 @@ export const implementationPlan: ImplementationPhase[] = [
         id: "cheapshark",
         title: "CheapShark fetcher + normalizer",
         status: "done",
+        notes: "Retry with backoff on 429/502/503; 400ms between deal pages.",
       },
       {
         id: "itad",
@@ -75,7 +76,14 @@ export const implementationPlan: ImplementationPhase[] = [
         id: "cron-routes",
         title: "Cron routes per source (CRON_SECRET)",
         status: "in_progress",
-        notes: "CheapShark + PSN routes done; ITAD/Xbox/eShop pending.",
+        notes:
+          "CheapShark + PSN routes + vercel.json schedules. ITAD/Xbox/eShop pending. Vercel Hobby: built-in crons may not run — use manual curl or external cron until Pro.",
+      },
+      {
+        id: "cron-orchestrator",
+        title: "Single script to trigger all cron routes",
+        status: "done",
+        notes: "npm run cron — hits all /api/cron/* with CRON_SECRET; live elapsed per source. CRON_BASE_URL for production.",
       },
       {
         id: "deals-table",
@@ -133,6 +141,23 @@ export const implementationPlan: ImplementationPhase[] = [
         status: "done",
         notes:
           "IGDB enrichment runs at cron only; description/cover/screenshots/genres/rating persisted on deals row. get-game-metadata.ts reserved for future wishlist.",
+      },
+    ],
+  },
+  {
+    id: "deploy",
+    title: "Deploy",
+    tasks: [
+      {
+        id: "vercel-supabase",
+        title: "Vercel + Supabase Postgres",
+        status: "in_progress",
+        notes: "POSTGRES_* from Vercel integration; migrations run locally against Supabase.",
+      },
+      {
+        id: "cron-secret",
+        title: "CRON_SECRET for production cron auth",
+        status: "done",
       },
     ],
   },

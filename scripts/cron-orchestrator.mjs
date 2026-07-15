@@ -1,0 +1,150 @@
+import { config } from "dotenv";
+
+config({ path: ".env.local" });
+
+// Keep in sync with `app/api/cron/*/route.ts`
+const CRON_SOURCES = ["cheapshark", "psn"];
+
+function readEnv(name) {
+  let value = process.env[name]?.trim();
+  if (!value) {
+    return undefined;
+  }
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1);
+  }
+  return value.length > 0 ? value : undefined;
+}
+
+function formatDuration(ms) {
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function parseArgs() {
+  const args = process.argv.slice(2);
+  let baseUrl = readEnv("CRON_BASE_URL") ?? "http://localhost:3000";
+  const sources = [...CRON_SOURCES];
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "--url" || arg === "--base-url") {
+      baseUrl = args[i + 1] ?? baseUrl;
+      i += 1;
+      continue;
+    }
+    if (arg === "--only") {
+      const list = args[i + 1]?.split(",").map((s) => s.trim()).filter(Boolean);
+      if (list?.length) {
+        sources.length = 0;
+        sources.push(...list);
+      }
+      i += 1;
+    }
+  }
+
+  return { baseUrl: baseUrl.replace(/\/$/, ""), sources };
+}
+
+async function runSource(source, baseUrl, secret) {
+  const url = `${baseUrl}/api/cron/${source}`;
+  const started = Date.now();
+  let tick;
+
+  process.stdout.write(`[${source}] starting…`);
+
+  tick = setInterval(() => {
+    const elapsed = formatDuration(Date.now() - started);
+    process.stdout.write(`\r[${source}] running… ${elapsed}`);
+  }, 500);
+
+  try {
+    const headers = secret ? { Authorization: `Bearer ${secret}` } : {};
+    const response = await fetch(url, { headers });
+    const body = await response.json().catch(() => ({}));
+    const elapsed = formatDuration(Date.now() - started);
+
+    clearInterval(tick);
+
+    if (response.ok && body.ok) {
+      process.stdout.write(
+        `\r[${source}] ✓ ${body.dealsIngested ?? 0} deals ingested in ${elapsed}\n`,
+      );
+      return {
+        source,
+        ok: true,
+        dealsIngested: body.dealsIngested ?? 0,
+        elapsedMs: Date.now() - started,
+      };
+    }
+
+    const error = body.error ?? `HTTP ${response.status}`;
+    process.stdout.write(`\r[${source}] ✗ failed in ${elapsed} — ${error}\n`);
+    if (response.status === 401) {
+      console.log(
+        `           hint: CRON_SECRET on Vercel must match .env.local exactly, then redeploy`,
+      );
+    }
+    return {
+      source,
+      ok: false,
+      error,
+      elapsedMs: Date.now() - started,
+    };
+  } catch (error) {
+    clearInterval(tick);
+    const elapsed = formatDuration(Date.now() - started);
+    const message = error instanceof Error ? error.message : String(error);
+    process.stdout.write(`\r[${source}] ✗ failed in ${elapsed} — ${message}\n`);
+    return {
+      source,
+      ok: false,
+      error: message,
+      elapsedMs: Date.now() - started,
+    };
+  }
+}
+
+const { baseUrl, sources } = parseArgs();
+const secret = readEnv("CRON_SECRET");
+
+console.log("Cron orchestrator");
+console.log(`  Base URL: ${baseUrl}`);
+console.log(`  Sources:  ${sources.join(", ")}`);
+console.log(`  Auth:     ${secret ? "CRON_SECRET set" : "none (dev open if NODE_ENV=development)"}`);
+console.log("");
+
+const runStarted = Date.now();
+const results = [];
+
+for (const source of sources) {
+  results.push(await runSource(source, baseUrl, secret));
+}
+
+const totalDeals = results.reduce(
+  (sum, result) => sum + (result.dealsIngested ?? 0),
+  0,
+);
+const failed = results.filter((result) => !result.ok);
+const succeeded = results.filter((result) => result.ok);
+
+console.log("");
+console.log("Summary");
+console.log(`  OK:    ${succeeded.length}/${results.length} sources`);
+console.log(`  Deals: ${totalDeals} total ingested`);
+console.log(`  Time:  ${formatDuration(Date.now() - runStarted)}`);
+
+if (failed.length > 0) {
+  console.log("  Failed:");
+  for (const result of failed) {
+    console.log(`    - ${result.source}: ${result.error}`);
+  }
+  process.exit(1);
+}
+
+console.log("  Done.");
