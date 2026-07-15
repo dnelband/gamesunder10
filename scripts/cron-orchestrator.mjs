@@ -2,8 +2,13 @@ import { config } from "dotenv";
 
 config({ path: ".env.local" });
 
-// Keep in sync with `app/api/cron/*/route.ts`
-const CRON_SOURCES = ["cheapshark", "psn"];
+/**
+ * Remote (Vercel / CRON_BASE_URL): sources that tolerate cloud IPs.
+ * Local (localhost): sources that rate-limit Vercel (CheapShark).
+ * Keep in sync with app/api/cron/*/route.ts as new sources land.
+ */
+const REMOTE_SOURCES = ["psn"];
+const LOCAL_SOURCES = ["cheapshark"];
 
 function readEnv(name) {
   let value = process.env[name]?.trim();
@@ -28,11 +33,17 @@ function formatDuration(ms) {
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  let baseUrl = readEnv("CRON_BASE_URL") ?? "http://localhost:3000";
-  const sources = [...CRON_SOURCES];
+  const local = args.includes("--local");
+  let baseUrl = local
+    ? "http://localhost:3000"
+    : (readEnv("CRON_BASE_URL") ?? "http://localhost:3000");
+  const sources = [...(local ? LOCAL_SOURCES : REMOTE_SOURCES)];
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
+    if (arg === "--local") {
+      continue;
+    }
     if (arg === "--url" || arg === "--base-url") {
       baseUrl = args[i + 1] ?? baseUrl;
       i += 1;
@@ -48,7 +59,11 @@ function parseArgs() {
     }
   }
 
-  return { baseUrl: baseUrl.replace(/\/$/, ""), sources };
+  return {
+    local,
+    baseUrl: baseUrl.replace(/\/$/, ""),
+    sources,
+  };
 }
 
 async function runSource(source, baseUrl, secret) {
@@ -110,13 +125,15 @@ async function runSource(source, baseUrl, secret) {
   }
 }
 
-const { baseUrl, sources } = parseArgs();
+const { local, baseUrl, sources } = parseArgs();
 const secret = readEnv("CRON_SECRET");
 
-console.log("Cron orchestrator");
+console.log(local ? "Cron local" : "Cron remote");
 console.log(`  Base URL: ${baseUrl}`);
 console.log(`  Sources:  ${sources.join(", ")}`);
-console.log(`  Auth:     ${secret ? "CRON_SECRET set" : "none (dev open if NODE_ENV=development)"}`);
+console.log(
+  `  Auth:     ${secret ? "CRON_SECRET set" : "none (dev open if NODE_ENV=development)"}`,
+);
 console.log("");
 
 const runStarted = Date.now();

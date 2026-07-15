@@ -49,7 +49,7 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "CheapShark fetcher + normalizer",
         status: "done",
         notes:
-          "Retry/backoff on deal pages; store names from committed stores.json (no /stores call).",
+          "Run via npm run cron-local against localhost — CheapShark 429s from Vercel IPs.",
       },
       {
         id: "itad",
@@ -78,13 +78,14 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "Cron routes per source (CRON_SECRET)",
         status: "in_progress",
         notes:
-          "CheapShark + PSN routes. vercel.json: once daily on Hobby (06:00 + 06:30 UTC). More often: npm run cron locally or external cron.",
+          "PSN on Vercel daily (Hobby). CheapShark local only (429 from cloud). ITAD/Xbox/eShop pending.",
       },
       {
         id: "cron-orchestrator",
-        title: "Single script to trigger all cron routes",
+        title: "Cron scripts: remote + local",
         status: "done",
-        notes: "npm run cron — hits all /api/cron/* with CRON_SECRET; live elapsed per source. CRON_BASE_URL for production.",
+        notes:
+          "npm run cron → REMOTE_SOURCES (psn) via CRON_BASE_URL. npm run cron-local → LOCAL_SOURCES (cheapshark) via localhost.",
       },
       {
         id: "deals-table",
