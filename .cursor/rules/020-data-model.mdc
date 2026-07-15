@@ -1,0 +1,57 @@
+---
+description: The NormalizedDeal contract — apply whenever touching ingestion, scrapers, or DB schema
+globs:
+  - "src/lib/sources/**"
+  - "src/lib/db/**"
+  - "src/types/**"
+---
+
+# Data Model
+
+Every ingestion source (API client or scraper) must map its output to this shape
+before it touches the database. No source-specific fields leak past the mapper.
+
+```typescript
+interface NormalizedDeal {
+  id: string;              // stable hash: source + sourceDealId
+  source: DealSource;       // 'cheapshark' | 'itad' | 'psn' | 'xbox' | 'eshop'
+  title: string;             // deal listing title, as shown by the store — not game metadata
+  normalizedTitle: string;  // lowercased, punctuation-stripped, for dedup matching
+  steamAppId: string | null; // used for exact IGDB matching via external_games — see 060-enrichment.mdc
+  storeName: string;
+  priceEur: number;
+  originalPriceEur: number;
+  discountPercent: number;
+  currencyOriginal: string; // pre-conversion currency, for audit
+  url: string;
+  imageUrl: string | null;  // the STORE's own thumbnail for this deal, not IGDB/RAWG art
+  region: string | null;    // relevant for console stores
+  fetchedAt: string;        // ISO timestamp
+}
+```
+
+## Rules
+
+- Currency conversion happens in the mapper, at ingestion time, using a single
+  shared exchange-rate utility (`src/lib/currency.ts`) — never inline conversion
+  math in a source module.
+- `normalizedTitle` is what cross-source deduplication matches on. Don't dedupe on
+  raw `title`.
+- If a source doesn't provide a field (e.g. eShop often lacks discount %), use
+  `null`/`0` explicitly — never omit the field or fake a value.
+- New source? Add the mapper in `src/lib/sources/<source>/normalize.ts` and export
+  a single `fetchDeals(): Promise<NormalizedDeal[]>`. Nothing outside that folder
+  should ever import the source's raw response types.
+- Populate `steamAppId` whenever the source exposes one (CheapShark/ITAD do
+  directly; console sources generally won't). It's the preferred key for game
+  enrichment lookups — see `060-enrichment.mdc`.
+
+## Hard boundary: no game metadata on this type, ever
+
+`NormalizedDeal` describes a *deal* — what's on sale, where, for how much. It must
+never grow fields like `description`, `genres`, `screenshots`, `rating`,
+`releaseDate`, `developer`, or any other game-catalog attribute. That data comes
+from the live enrichment layer (`060-enrichment.mdc`), never from a source
+scraper/API mapper, and never gets persisted to Postgres. If a task seems to need
+one of these fields on a deal, the fix is an enrichment call at render time, not a
+new column.

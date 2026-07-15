@@ -1,0 +1,52 @@
+---
+description: Postgres schema and query conventions
+globs:
+  - "src/lib/db/**"
+  - "drizzle/**"
+  - "prisma/**"
+---
+
+# Database Conventions
+
+- Use a typed query layer (Drizzle preferred over Prisma for this project — lighter,
+  closer to raw SQL, good fit for a single-table-heavy deals schema). Confirm
+  choice before scaffolding migrations if not already decided.
+- Core table: `deals`, keyed on the `NormalizedDeal.id` hash. Upsert on ingestion
+  (`ON CONFLICT (id) DO UPDATE`) — never insert duplicates per refresh cycle.
+- Keep a `deal_history` table (or a `previous_price` column) if/when historical low
+  tracking matters — don't overwrite price history silently.
+- Filtering (price under €10, store, discount %) happens in SQL via query params,
+  not fetched-then-filtered in JS — this is a small dataset now but design the
+  queries as if it weren't.
+- Index on `(price_eur)`, `(normalized_title)`, and `(steam_app_id)` at minimum
+  once the table's live — `steam_app_id` is the enrichment lookup key.
+- Migrations are explicit files, checked in — no relying on `db push`/sync-on-boot
+  for anything past local dev.
+- The `deals` table's columns mirror `NormalizedDeal` exactly — no
+  `description`/`genres`/`screenshots`/`rating`/etc columns, ever. If a migration
+  adds a column like that, it's wrong; game metadata comes from IGDB at render
+  time (`060-enrichment.mdc`), not from a database column.
+
+## `source_health` table
+
+Backs the `/status` dashboard (`070-implementation-plan.mdc`). One row per
+source, written only by `recordSourceRun()` in `src/lib/db/source-health.ts`,
+called from every cron route after every run:
+
+```typescript
+interface SourceHealthRow {
+  source: string;               // primary key, matches DealSource
+  status: 'ok' | 'degraded' | 'broken';
+  lastRunAt: string;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  lastError: string | null;
+  consecutiveFailures: number;
+  dealsIngestedLastRun: number | null;
+}
+```
+
+Upsert on every run (`ON CONFLICT (source) DO UPDATE`) — this table always has
+exactly one row per source, never a history table. If historical failure
+patterns matter later, that's a separate `source_health_events` table, not this
+one.

@@ -1,0 +1,41 @@
+---
+description: Rules for console-store scrapers (PSN, Xbox, eShop)
+globs:
+  - "src/lib/sources/psn/**"
+  - "src/lib/sources/xbox/**"
+  - "src/lib/sources/eshop/**"
+---
+
+# Scraper Rules
+
+These sources are unofficial/undocumented and *will* break without notice. Treat
+every scraper as hostile input.
+
+## Required for every scraper module
+
+- Prefer direct `fetch` against internal JSON endpoints over headless browser
+  rendering (Playwright) — only fall back to Playwright if the store requires JS
+  execution to expose data.
+- Wrap the entire fetch+parse in try/catch. On failure: log the error with source
+  name and timestamp, return an empty array, never throw up to the job runner.
+- Validate the response shape (zod schema per source) before mapping to
+  `NormalizedDeal`. If validation fails, treat it as a scraper break, not a data
+  error — log loudly, don't silently drop malformed data into the DB.
+- Rate-limit yourself: minimum delay between requests, sensible page-size batching.
+  Don't hammer the endpoint just because there's no published limit.
+- No hardcoded auth tokens or cookies committed to the repo, even ones scraped from
+  a public page — pull from env if a session is ever needed.
+
+## When a scraper breaks
+
+- Don't silently "fix" it by loosening validation — confirm the actual response
+  shape changed, update the zod schema and mapper together, and note the change
+  in a comment with the date.
+- You don't need to manually record the breakage anywhere — the cron route
+  calls `recordSourceRun()` on every run (`040-database.mdc`,
+  `070-implementation-plan.mdc`), so a failing scraper shows up on `/status`
+  automatically. Your job when fixing one is just to fix the code; the
+  dashboard reflects it on the next successful run.
+- If asked to write a new scraper from scratch: propose the endpoint(s) and
+  response shape first, based on what's actually observed in the network tab —
+  don't invent an endpoint URL from pattern-matching to similar sites.

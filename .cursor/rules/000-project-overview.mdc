@@ -1,0 +1,67 @@
+---
+description: Core project context — always loaded
+alwaysApply: true
+---
+
+# Project: Game Deals Aggregator
+
+A Next.js 16 (App Router) site that aggregates current game deals under €10 across
+PC storefronts (via CheapShark/IsThereAnyDeal APIs) and console storefronts
+(PSN, Xbox, Nintendo eShop via custom scrapers).
+
+## Architecture
+
+- **Ingestion layer**: independent fetchers/scrapers per source, each producing a
+  `NormalizedDeal` (see `020-data-model.mdc`). Sources never leak their raw shape
+  past the ingestion layer.
+- **Storage**: Postgres, deal data only. Ingestion writes normalized deals; the
+  app reads deal data only from Postgres, never live from source APIs on request.
+- **Enrichment layer**: game metadata (description, genres, cover art, etc.) is
+  fetched live from IGDB at render time and never persisted — see
+  `060-enrichment.mdc`. This is the one deliberate exception to "reads come from
+  Postgres," and it's an exception by design, not a shortcut.
+- **Refresh**: scheduled jobs (cron route handlers or Vercel Cron), not on-request
+  fetching. Each source job is isolated and must not crash the others on failure.
+- **App**: Server Components for data display, filtering/sorting done server-side
+  against Postgres query params where reasonable.
+
+## Non-negotiables
+
+- Never call a scraping source directly from a user-facing request path.
+- Every ingestion source must fail independently — one broken scraper (esp. eShop)
+  must never take down the pipeline or block other sources from updating.
+- Prices are normalized to EUR at ingestion time, not display time.
+- We do not store game metadata — no descriptions, genres, screenshots, ratings,
+  or other catalog data in Postgres, ever. `NormalizedDeal` and `GameMetadata`
+  stay two separate types with two separate lifecycles; see `020-data-model.mdc`
+  and `060-enrichment.mdc`.
+- I (David) write the logic myself for anything non-boilerplate — use Cursor for
+  scaffolding, types, repetitive glue code, and catching mistakes, not for
+  designing scraper resilience strategy or schema decisions. Ask before generating
+  large blocks of business logic; propose an approach first.
+
+## Stack
+
+TypeScript strict mode, **Next.js 16 (currently 16.2.x) App Router**, PostgreSQL
+(see `040-database.mdc` for client choice), Tailwind for styling. No Redux/Zustand
+needed — server state lives in Postgres, minimal client state.
+
+## This is Next.js 16, not 14 or 15 — don't pattern-match to older training data
+
+Next.js 16 has real breaking changes vs. what most training data assumes. Before
+writing App Router code, check `050-nextjs-routes.mdc` for the specifics. If
+anything looks uncertain, check `node_modules/next/dist/docs/` in this repo
+(bundled by create-next-app) rather than guessing from older Next.js conventions.
+
+Headline differences from Next 14/15 patterns you may default to:
+- `params` and `searchParams` are **always async** (`Promise`-based) — no sync
+  fallback exists in 16. Every page/layout/route reading them must `await`.
+- `middleware.ts` is deprecated in favor of `proxy.ts` (same App Router position,
+  new name, Node.js runtime only — no Edge runtime for proxy).
+- Turbopack is the default bundler — don't add webpack config unless there's a
+  specific incompatibility.
+- Caching is explicit via Cache Components / `use cache` — don't assume a route
+  is statically cached by default; dynamic/request-time is now the default
+  unless something opts in to caching.
+- `next lint` is removed — lint via plain `eslint`.
+- Node.js 20.9+ is required.

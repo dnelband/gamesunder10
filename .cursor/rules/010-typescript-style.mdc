@@ -1,0 +1,19 @@
+---
+description: General TypeScript conventions
+globs:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+---
+
+# TypeScript Style
+
+- Strict mode, no `any` — use `unknown` + narrowing or a zod schema instead.
+- Prefer explicit return types on exported functions, especially in `src/lib`.
+- No default exports except Next.js special files (`page.tsx`, `layout.tsx`,
+  `route.ts`) which require them.
+- Small, single-purpose modules over large multi-export files — this matters
+  especially in `src/lib/sources/*` where isolation is a correctness requirement,
+  not just style.
+- Don't add abstraction (generic source interfaces, plugin registries) ahead of
+  need — three concrete sources exist before any "source framework" is justified.
+  Propose it, don't just build it.

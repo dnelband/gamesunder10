@@ -1,0 +1,51 @@
+---
+description: Next.js 16 App Router and cron/API route conventions
+globs:
+  - "src/app/**"
+---
+
+# Next.js 16 Conventions
+
+## Version-specific rules (Next 16, not 14/15)
+
+- `params` and `searchParams` in pages, layouts, and route handlers are **always
+  a `Promise`** — always `await props.params` / `await props.searchParams`.
+  Never write a signature that treats them as plain objects.
+  ```typescript
+  export default async function Page(props: PageProps<'/deals/[slug]'>) {
+    const { slug } = await props.params;
+    const query = await props.searchParams;
+    // ...
+  }
+  ```
+- If auth/header logic is ever needed on requests (unlikely for this project,
+  but noting it), it goes in `proxy.ts` at the project root, not `middleware.ts`
+  — the file was renamed and runs on the Node.js runtime only, not Edge.
+- Don't assume a page is statically cached by default — Next 16's default is
+  request-time/dynamic. If a deals listing page should be cached between
+  ingestion runs, cache it explicitly (`use cache` directive on the fetch/query
+  function) rather than relying on implicit static generation.
+- Turbopack is the default bundler — no webpack config needed unless something
+  specific breaks under it.
+
+- Server Components by default for anything reading deal data. Client Components
+  only for interactive filter/sort controls — keep them thin, push state to the
+  URL (searchParams) rather than local-only state so filtered views are shareable
+  and linkable.
+- Ingestion jobs live under `src/app/api/cron/<source>/route.ts`, one route per
+  source, each calling that source's `fetchDeals()` + upsert independently.
+  Protect these with a shared secret header check (`CRON_SECRET`), not just
+  relying on the platform's cron auth.
+- Every cron route calls `recordSourceRun()` (`040-database.mdc`) exactly once
+  per invocation, in both the success and failure paths — wrap the fetch+upsert
+  in try/catch and record the outcome either way. This is what powers `/status`
+  (`070-implementation-plan.mdc`); a cron route that doesn't call it is a bug.
+- No source's cron route imports another source's module — isolation from
+  `030-scrapers.mdc` applies here too; one route timing out or 500ing must not
+  affect the others.
+- Data fetching for pages goes through the DB query layer (`src/lib/db`), never
+  a direct call to CheapShark/ITAD/scrapers from a page or route handler outside
+  the cron jobs.
+- Use `revalidatePath`/`revalidateTag` after a successful ingestion run instead of
+  time-based ISR guessing, so the site updates right after a refresh completes
+  rather than on a fixed timer.

@@ -1,0 +1,63 @@
+---
+description: Game metadata enrichment via IGDB — fetched live, never persisted
+globs:
+  - "src/lib/enrichment/**"
+  - "src/app/**"
+---
+
+# Game Metadata Enrichment (IGDB)
+
+We do not store game metadata (description, genres, screenshots, ratings, release
+date, developer, etc). We only ever store *deal* data (see `020-data-model.mdc`).
+Anything about the game itself is fetched live from IGDB at render time.
+
+## Why IGDB over RAWG
+
+IGDB's `external_games` endpoint maps Steam App IDs directly to IGDB game
+records — exact matching against `NormalizedDeal.steamAppId`, no fuzzy title
+search. RAWG doesn't offer this, and fuzzy title matching across storefronts is
+a real source of bugs (wrong edition, wrong game entirely) we'd rather not have.
+
+## Auth
+
+- IGDB sits behind Twitch's OAuth2 client-credentials flow, not a simple API key.
+  Exchange `IGDB_CLIENT_ID` / `IGDB_CLIENT_SECRET` for a bearer token via
+  `https://id.twitch.tv/oauth2/token`, cache the token server-side for its
+  `expires_in` duration (it's long-lived — no need to refresh per-request), and
+  send `Client-ID` + `Authorization: Bearer <token>` on every IGDB call.
+- Token caching lives in `src/lib/enrichment/igdb-auth.ts`. Don't fetch a fresh
+  token per request — that's wasteful and unnecessary given the long expiry.
+- IGDB is rate-limited to ~4 requests/second — batch lookups where possible using
+  IGDB's multiquery support rather than firing requests in a loop.
+
+## Fetch pattern
+
+- `src/lib/enrichment/igdb.ts` exports something like
+  `getGameMetadata(steamAppId: string): Promise<GameMetadata | null>`.
+- IGDB uses POST + the Apicalypse query syntax, not query-string REST — don't
+  write GET requests against it.
+- Wrap the call in Next 16's `use cache` with a `revalidateTag` (e.g.
+  `igdb:${steamAppId}`) and a sensible TTL (game metadata changes rarely — hours
+  to a day is fine). This gives you caching without persistence: repeated views
+  of the same deal don't re-hit IGDB, but nothing lands in Postgres.
+- If IGDB has no match for a `steamAppId` (or the deal has none, e.g. most
+  console-store items), degrade gracefully — render the deal using only
+  `NormalizedDeal` fields, don't block the page or throw.
+
+## Shape
+
+```typescript
+interface GameMetadata {
+  igdbId: number;
+  description: string | null;
+  genres: string[];
+  coverUrl: string | null;
+  screenshotUrls: string[];
+  rating: number | null;       // IGDB aggregated rating
+  releaseDate: string | null;  // ISO date
+}
+```
+
+This type lives in `src/types/enrichment.ts`, separate from `NormalizedDeal` —
+never merge the two into one shape, even at the component prop level. Keeping
+them distinct is what keeps the "no game data in Postgres" boundary enforceable.
