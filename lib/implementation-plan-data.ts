@@ -48,7 +48,8 @@ export const implementationPlan: ImplementationPhase[] = [
         id: "cheapshark",
         title: "CheapShark fetcher + normalizer",
         status: "done",
-        notes: "Retry with backoff on 429/502/503; 400ms between deal pages.",
+        notes:
+          "Retry/backoff on deal pages; store names from committed stores.json (no /stores call).",
       },
       {
         id: "itad",

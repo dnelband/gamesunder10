@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:reset": "node scripts/db-reset.mjs",
-    "cron": "node scripts/cron-orchestrator.mjs"
+    "cron": "node scripts/cron-orchestrator.mjs",
+    "cheapshark:refresh-stores": "node scripts/refresh-cheapshark-stores.mjs"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

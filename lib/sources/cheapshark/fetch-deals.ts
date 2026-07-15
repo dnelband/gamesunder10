@@ -1,12 +1,12 @@
 import {
   cheapsharkDealsResponseSchema,
-  cheapsharkStoresResponseSchema,
 } from "./schema";
 import { normalizeCheapsharkDeal } from "./normalize";
 import {
   delayBetweenRequests,
   fetchCheapsharkWithRetry,
 } from "./http";
+import { getCachedStoreNames } from "./stores";
 import type { NormalizedDeal } from "@/types/deal";
 
 const CHEAPSHARK_API = "https://www.cheapshark.com/api/1.0";
@@ -14,19 +14,11 @@ const MAX_PAGES = 10;
 const PAGE_SIZE = 60;
 const PAGE_DELAY_MS = 400;
 
-async function fetchStoreNames(): Promise<Map<string, string>> {
-  const response = await fetchCheapsharkWithRetry(`${CHEAPSHARK_API}/stores`, {
-    label: "stores",
-  });
-
-  const json: unknown = await response.json();
-  const stores = cheapsharkStoresResponseSchema.parse(json);
-
-  return new Map(stores.map((store) => [store.storeID, store.storeName]));
-}
-
 export async function fetchDeals(): Promise<NormalizedDeal[]> {
-  const storeNames = await fetchStoreNames();
+  // Store ID→name map is committed (stores.json) so we never hit /stores on cron.
+  // That endpoint was 429ing from Vercel even with backoff. Refresh via
+  // scripts/refresh-cheapshark-stores.mjs when CheapShark adds stores.
+  const storeNames = getCachedStoreNames();
   const deals: NormalizedDeal[] = [];
 
   for (let page = 0; page < MAX_PAGES; page += 1) {
