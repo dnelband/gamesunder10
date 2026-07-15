@@ -4,12 +4,15 @@ import {
   formatRatingBadgeValue,
   getScoreBadgeClass,
 } from "@/lib/format-rating";
+import { sortPlatforms } from "@/lib/format-platform";
 import type { NormalizedDeal } from "@/types/deal";
 
 const overlayClass =
   "bg-white/90 shadow-sm backdrop-blur-sm dark:bg-zinc-950/90";
 
 export function DealCard({ deal }: { deal: NormalizedDeal }) {
+  const platforms = sortPlatforms(deal.platforms);
+
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-950">
       <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100 dark:bg-zinc-900">
@@ -27,6 +30,19 @@ export function DealCard({ deal }: { deal: NormalizedDeal }) {
             </div>
           )}
         </Link>
+
+        {platforms.length > 0 ? (
+          <div className="pointer-events-none absolute top-2 left-2 z-10 flex flex-wrap gap-1">
+            {platforms.map((platform) => (
+              <span
+                key={platform}
+                className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${overlayClass}`}
+              >
+                {platform}
+              </span>
+            ))}
+          </div>
+        ) : null}
 
         <span
           className={`pointer-events-none absolute bottom-2 left-2 z-10 inline-flex items-baseline gap-2 rounded-full px-3 py-1.5 ${overlayClass}`}

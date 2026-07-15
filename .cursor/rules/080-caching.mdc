@@ -29,28 +29,24 @@ Three data tiers, three owners. Don't collapse them into one cache layer.
   fixed page TTL. Time-based `cacheLife` is a safety net, not the primary
   freshness mechanism for deals.
 
-## Tier 3 — IGDB enrichment (Next cache only, never Postgres)
+## Tier 3 — IGDB enrichment (Postgres snapshot at cron, not on page views)
 
-- Game metadata is not persisted (`060-enrichment.mdc`). Cache it with
-  `'use cache'` only.
-- Tag per game: `cacheTag(\`igdb:game:${steamAppId}\`)`.
-- Use `cacheLife('days')` — metadata changes rarely; no write-path invalidation.
-- **Cache misses too**: if IGDB has no match, cache `null` with the same tag/TTL
-  so repeated views don't re-query a known dead end.
-- **Dedupe before calling IGDB**: collect unique `steamAppId`s for the current
-  view, then one batch multiquery — not N sequential calls in a loop.
-- Batch entry point: `getGameMetadataForSteamAppIds(ids)` in
-  `lib/enrichment/get-game-metadata.ts`. Detail pages call it with one id;
-  listing pages pass the page's unique ids. Same function, same per-id tags.
-- IGDB OAuth tokens are **process-memory** only (`lib/enrichment/igdb-auth.ts`),
-  refreshed on expiry — not Next cache, not Postgres.
+- The deals table is a bounded dataset refreshed by cron — enrich it fully at
+  ingestion, not on demand.
+- `enrichDealsFromIgdb()` runs from cron routes after normalize, before upsert.
+  It batch-fetches IGDB and copies genres, rating, description, cover, and
+  screenshots onto each deal row. Source-provided genres/rating win over IGDB.
+- Pages read enrichment from Postgres only. No live IGDB on `/deals` or
+  `/deals/[id]`.
+- `getGameMetadataForSteamAppIds()` in `get-game-metadata.ts` stays for future
+  features outside the deals dataset (e.g. wishlist). Uses Next `use cache`.
+- IGDB OAuth tokens are **process-memory** only (`lib/enrichment/igdb-auth.ts`).
 
 ## Composition rules
 
-- Never merge `NormalizedDeal` and `GameMetadata` into one cached object. Fetch
-  deals from cached DB query, enrich in the page/component, pass as separate props.
-- Listing: cached `listDeals()` → unique steam ids → cached batch IGDB → render.
-- Detail: cached `getDealById()` → cached IGDB for that id → render.
+- Never merge `NormalizedDeal` and `GameMetadata` into one cached object at
+  render time — enrichment is merged onto the deal row at cron instead.
+- Listing and detail: cached DB query only → render from `NormalizedDeal`.
 - If IGDB credentials are missing, enrichment returns `null` gracefully; deal
   pages still render from Postgres.
 

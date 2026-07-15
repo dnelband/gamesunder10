@@ -54,6 +54,7 @@ export function normalizeCheapsharkDeal(
     title: deal.title,
     normalizedTitle: normalizeTitle(deal.title),
     steamAppId,
+    externalStoreUid: null,
     storeName: storeNames.get(deal.storeID) ?? `Store ${deal.storeID}`,
     priceEur,
     originalPriceEur,
@@ -64,8 +65,12 @@ export function normalizeCheapsharkDeal(
     region: null,
     sourceReleaseDate: sourceReleaseDate(deal.releaseDate),
     genres: [],
+    platforms: ["PC"],
     rating,
     ratingSource,
+    description: null,
+    coverUrl: null,
+    screenshotUrls: [],
     fetchedAt: new Date().toISOString(),
   };
 }

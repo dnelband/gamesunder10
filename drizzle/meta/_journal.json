@@ -29,6 +29,27 @@
       "when": 1784116853414,
       "tag": "0003_familiar_thaddeus_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784120139134,
+      "tag": "0004_sour_prowler",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784120806533,
+      "tag": "0005_short_menace",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784121737366,
+      "tag": "0006_narrow_warstar",
+      "breakpoints": true
     }
   ]
 }

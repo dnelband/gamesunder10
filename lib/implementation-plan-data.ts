@@ -57,7 +57,9 @@ export const implementationPlan: ImplementationPhase[] = [
       {
         id: "psn",
         title: "PSN scraper",
-        status: "planned",
+        status: "done",
+        notes:
+          "GraphQL categoryGridRetrieve, de-DE EUR, PS4/PS5 full games ≤€10; IGDB enrichment at cron; /api/cron/psn.",
       },
       {
         id: "xbox",
@@ -73,7 +75,7 @@ export const implementationPlan: ImplementationPhase[] = [
         id: "cron-routes",
         title: "Cron routes per source (CRON_SECRET)",
         status: "in_progress",
-        notes: "CheapShark route done; others pending.",
+        notes: "CheapShark + PSN routes done; ITAD/Xbox/eShop pending.",
       },
       {
         id: "deals-table",
@@ -127,9 +129,10 @@ export const implementationPlan: ImplementationPhase[] = [
       },
       {
         id: "igdb-metadata",
-        title: "Live game metadata on deal views",
+        title: "Game metadata on deal views",
         status: "done",
-        notes: "Requires IGDB_CLIENT_ID + IGDB_CLIENT_SECRET in .env.local.",
+        notes:
+          "IGDB enrichment runs at cron only; description/cover/screenshots/genres/rating persisted on deals row. get-game-metadata.ts reserved for future wishlist.",
       },
     ],
   },

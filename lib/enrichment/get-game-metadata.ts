@@ -1,3 +1,8 @@
+/**
+ * On-demand IGDB lookups for games outside the deals dataset (e.g. wishlist).
+ * Deal pages read enrichment snapshots from Postgres — filled at cron via
+ * enrichDealsFromIgdb(), not through this module.
+ */
 import { cacheLife, cacheTag } from "next/cache";
 
 import type { GameMetadata } from "@/types/enrichment";
@@ -27,8 +32,6 @@ export async function getGameMetadataForSteamAppIds(
     return {};
   }
 
-  // Skip cache when credentials aren't configured — avoids locking in empty
-  // results from page loads before IGDB_CLIENT_ID/SECRET were set.
   const hasCredentials =
     Boolean(getIgdbClientId()) && Boolean(process.env.IGDB_CLIENT_SECRET);
 

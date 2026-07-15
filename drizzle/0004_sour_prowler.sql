@@ -1,0 +1,1 @@
+ALTER TABLE "deals" ADD COLUMN "platforms" text[] DEFAULT '{}' NOT NULL;

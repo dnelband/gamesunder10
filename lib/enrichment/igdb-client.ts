@@ -9,6 +9,7 @@ interface IgdbExternalGame {
 
 interface IgdbGame {
   id: number;
+  name?: string;
   summary?: string;
   aggregated_rating?: number;
   first_release_date?: number;
@@ -16,6 +17,8 @@ interface IgdbGame {
   cover?: { url?: string };
   screenshots?: Array<{ url?: string }>;
 }
+
+const IGDB_STEAM_SOURCE = 1;
 
 function igdbImageUrl(path: string | undefined): string | null {
   if (!path) {
@@ -65,15 +68,31 @@ function mapGame(game: IgdbGame): GameMetadata {
   };
 }
 
-export async function fetchGameMetadataBatchFromIgdb(
-  steamAppIds: string[],
-): Promise<Record<string, GameMetadata | null>> {
-  const result: Record<string, GameMetadata | null> = {};
-  for (const id of steamAppIds) {
-    result[id] = null;
+function escapeIgdbString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+async function fetchGamesByIds(gameIds: number[]): Promise<IgdbGame[]> {
+  if (gameIds.length === 0) {
+    return [];
   }
 
-  if (steamAppIds.length === 0) {
+  return igdbPost<IgdbGame>(
+    "games",
+    `fields name, summary, aggregated_rating, first_release_date, genres.name, cover.url, screenshots.url; where id = (${gameIds.join(",")}); limit 500;`,
+  );
+}
+
+async function fetchMetadataByExternalUids(
+  uids: string[],
+  externalGameSource: number,
+): Promise<Record<string, GameMetadata | null>> {
+  const result: Record<string, GameMetadata | null> = {};
+  for (const uid of uids) {
+    result[uid] = null;
+  }
+
+  if (uids.length === 0) {
     return result;
   }
 
@@ -83,33 +102,70 @@ export async function fetchGameMetadataBatchFromIgdb(
     return result;
   }
 
-  const uidFilter = steamAppIds.map((id) => `"${id}"`).join(",");
+  const uidFilter = uids.map((uid) => `"${escapeIgdbString(uid)}"`).join(",");
   const externalGames = await igdbPost<IgdbExternalGame>(
     "external_games",
-    `fields game, uid; where external_game_source = 1 & uid = (${uidFilter}); limit 500;`,
+    `fields game, uid; where external_game_source = ${externalGameSource} & uid = (${uidFilter}); limit 500;`,
   );
 
-  const steamIdsByGameId = new Map<number, string[]>();
+  const uidsByGameId = new Map<number, string[]>();
   for (const row of externalGames) {
-    const existing = steamIdsByGameId.get(row.game) ?? [];
+    const existing = uidsByGameId.get(row.game) ?? [];
     existing.push(row.uid);
-    steamIdsByGameId.set(row.game, existing);
+    uidsByGameId.set(row.game, existing);
   }
 
-  const gameIds = [...steamIdsByGameId.keys()];
-  if (gameIds.length === 0) {
+  const games = await fetchGamesByIds([...uidsByGameId.keys()]);
+  for (const game of games) {
+    const metadata = mapGame(game);
+    for (const uid of uidsByGameId.get(game.id) ?? []) {
+      result[uid] = metadata;
+    }
+  }
+
+  return result;
+}
+
+export async function fetchGameMetadataBatchFromIgdb(
+  steamAppIds: string[],
+): Promise<Record<string, GameMetadata | null>> {
+  return fetchMetadataByExternalUids(steamAppIds, IGDB_STEAM_SOURCE);
+}
+
+export async function fetchGameMetadataBatchFromExternalStore(
+  uids: string[],
+  externalGameSource: number,
+): Promise<Record<string, GameMetadata | null>> {
+  return fetchMetadataByExternalUids(uids, externalGameSource);
+}
+
+export async function fetchGameMetadataByExactTitles(
+  titles: string[],
+): Promise<Record<string, GameMetadata | null>> {
+  const result: Record<string, GameMetadata | null> = {};
+  for (const title of titles) {
+    result[title] = null;
+  }
+
+  if (titles.length === 0) {
     return result;
   }
 
-  const games = await igdbPost<IgdbGame>(
-    "games",
-    `fields summary, aggregated_rating, first_release_date, genres.name, cover.url, screenshots.url; where id = (${gameIds.join(",")}); limit 500;`,
-  );
+  const clientId = getIgdbClientId();
+  const token = await getIgdbAccessToken();
+  if (!clientId || !token) {
+    return result;
+  }
 
-  for (const game of games) {
-    const metadata = mapGame(game);
-    for (const steamId of steamIdsByGameId.get(game.id) ?? []) {
-      result[steamId] = metadata;
+  for (const title of titles) {
+    const games = await igdbPost<IgdbGame>(
+      "games",
+      `search "${escapeIgdbString(title)}"; fields name, summary, aggregated_rating, first_release_date, genres.name, cover.url, screenshots.url; limit 10;`,
+    );
+
+    const exactMatch = games.find((game) => game.name === title);
+    if (exactMatch) {
+      result[title] = mapGame(exactMatch);
     }
   }
 

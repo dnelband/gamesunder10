@@ -7,10 +7,9 @@ globs:
 
 # Game Metadata Enrichment (IGDB)
 
-We do not store rich game metadata (description, screenshots, developer, etc.) in
-Postgres. We persist *deal* data plus compact **`genres`** and **`rating`** snapshots
-on each deal (`020-data-model.mdc`). IGDB fills those **only as ingestion fallbacks**
-when the store didn't; other catalog fields stay render-time enrichment.
+We persist *deal* data plus an IGDB **snapshot** on each deal row at cron time:
+`genres`, `rating`, `description`, `coverUrl`, `screenshotUrls` (`020-data-model.mdc`).
+Pages read Postgres only — no live IGDB on the deals path.
 
 ## Why IGDB over RAWG
 
@@ -31,34 +30,18 @@ a real source of bugs (wrong edition, wrong game entirely) we'd rather not have.
 - IGDB is rate-limited to ~4 requests/second — batch lookups where possible using
   IGDB's multiquery support rather than firing requests in a loop.
 
-## Genres & rating — ingestion fallback, not listing default
+## Enrichment at cron (deals dataset)
 
 - **Source normalizers own genres and rating when the store exposes them** — IGDB
   is second choice, never first.
-- During cron, after `fetchDeals()` + normalize: for deals still missing `genres`
-  and/or `rating` with a `steamAppId`, batch IGDB lookups and merge onto deals
-  before upsert. One shared helper e.g. `enrichDealsFromIgdb(deals: NormalizedDeal[])`
-  in `lib/enrichment/` — **one batch per unique `steamAppId`**, copy both genres
-  and rating from the same `GameMetadata` response. Callable from cron routes only.
-- If source already set `genres` and/or `rating`, skip IGDB for that field — do
-  not overwrite source values.
-- Exact `steamAppId` match only — no fuzzy title search for backfill.
-- `GameMetadata` and `NormalizedDeal` stay separate types; copy values at ingestion.
-
-## Fetch pattern (render-time catalog fields)
-
-- `lib/enrichment/igdb.ts` exports something like
-  `getGameMetadata(steamAppId: string): Promise<GameMetadata | null>`.
-- IGDB uses POST + the Apicalypse query syntax, not query-string REST — don't
-  write GET requests against it.
-- Wrap IGDB calls in Next 16's `'use cache'` with per-game tags and
-  `cacheLife('days')`. See `080-caching.mdc` for batching and negative caching.
-- Listing pages batch unique `steamAppId`s via `getGameMetadataForSteamAppIds()`
-  for **cover/description only** when needed — not for genres/rating if already on
-  the deal row from Postgres.
-- If IGDB has no match for a `steamAppId` (or the deal has none, e.g. most
-  console-store items), degrade gracefully — render the deal using only
-  `NormalizedDeal` fields, don't block the page or throw.
+- During cron, after `fetchDeals()` + normalize: call `enrichDealsFromIgdb()`
+  to batch IGDB lookups and merge onto deals before upsert. Copy genres, rating,
+  description, cover, screenshots, and release date (when source lacks one).
+- If source already set a field, do not overwrite with IGDB on upsert.
+- Lookup order: Steam `steamAppId` → PSN `externalStoreUid` / product id → exact
+  title match as last resort.
+- `getGameMetadata()` / `getGameMetadataForSteamAppIds()` are for **non-deal**
+  features (wishlist) — not deal pages.
 
 ## Shape
 

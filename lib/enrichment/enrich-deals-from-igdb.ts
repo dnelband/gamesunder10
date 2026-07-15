@@ -1,6 +1,12 @@
+import { getIgdbPsnExternalGameSource } from "@/lib/sources/psn/config";
 import type { NormalizedDeal } from "@/types/deal";
+import type { GameMetadata } from "@/types/enrichment";
 
-import { fetchGameMetadataBatchFromIgdb } from "./igdb-client";
+import {
+  fetchGameMetadataBatchFromExternalStore,
+  fetchGameMetadataBatchFromIgdb,
+  fetchGameMetadataByExactTitles,
+} from "./igdb-client";
 
 const IGDB_BATCH_SIZE = 500;
 
@@ -12,59 +18,191 @@ function chunk<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+function needsIgdbEnrichment(deal: NormalizedDeal): boolean {
+  return (
+    deal.genres.length === 0 ||
+    deal.rating === null ||
+    deal.description === null ||
+    deal.coverUrl === null ||
+    deal.screenshotUrls.length === 0
+  );
+}
+
+function psnProductIdFromUrl(url: string): string | null {
+  const match = url.match(/\/product\/([^/?#]+)/);
+  return match?.[1] ?? null;
+}
+
+function mergeIgdbMetadata(
+  deal: NormalizedDeal,
+  metadata: GameMetadata | null | undefined,
+): NormalizedDeal {
+  if (!metadata) {
+    return deal;
+  }
+
+  return {
+    ...deal,
+    genres: deal.genres.length > 0 ? deal.genres : metadata.genres,
+    rating:
+      deal.rating !== null
+        ? deal.rating
+        : metadata.rating !== null
+          ? metadata.rating
+          : null,
+    ratingSource:
+      deal.rating !== null
+        ? deal.ratingSource
+        : metadata.rating !== null
+          ? "igdb"
+          : deal.ratingSource,
+    description: deal.description ?? metadata.description,
+    coverUrl: deal.coverUrl ?? metadata.coverUrl,
+    screenshotUrls:
+      deal.screenshotUrls.length > 0
+        ? deal.screenshotUrls
+        : metadata.screenshotUrls,
+    sourceReleaseDate: deal.sourceReleaseDate ?? metadata.releaseDate,
+  };
+}
+
+function firstMatchingMetadata(
+  keys: string[],
+  metadataByKey: Record<string, GameMetadata | null>,
+): GameMetadata | null {
+  for (const key of keys) {
+    const metadata = metadataByKey[key];
+    if (metadata) {
+      return metadata;
+    }
+  }
+  return null;
+}
+
+function lookupKeysForDeal(deal: NormalizedDeal): string[] {
+  const keys: string[] = [];
+  if (deal.steamAppId) {
+    keys.push(deal.steamAppId);
+  }
+  if (deal.externalStoreUid) {
+    keys.push(deal.externalStoreUid);
+  }
+  if (deal.source === "psn") {
+    const productId = psnProductIdFromUrl(deal.url);
+    if (productId) {
+      keys.push(productId);
+    }
+  }
+  return keys;
+}
+
+/** Enrich deals from IGDB at cron time. Pages read Postgres only — no live IGDB. */
 export async function enrichDealsFromIgdb(
   deals: NormalizedDeal[],
 ): Promise<NormalizedDeal[]> {
+  const dealsNeedingEnrichment = deals.filter(needsIgdbEnrichment);
+  if (dealsNeedingEnrichment.length === 0) {
+    return deals;
+  }
+
   const steamIdsNeedingLookup = [
     ...new Set(
-      deals
-        .filter(
-          (deal) =>
-            deal.steamAppId !== null &&
-            (deal.genres.length === 0 || deal.rating === null),
-        )
+      dealsNeedingEnrichment
+        .filter((deal) => deal.steamAppId !== null)
         .map((deal) => deal.steamAppId as string),
     ),
   ];
 
-  if (steamIdsNeedingLookup.length === 0) {
-    return deals;
-  }
+  const psnUidsNeedingLookup = [
+    ...new Set(
+      dealsNeedingEnrichment
+        .filter((deal) => deal.source === "psn")
+        .flatMap((deal) => {
+          const keys: string[] = [];
+          if (deal.externalStoreUid) {
+            keys.push(deal.externalStoreUid);
+          }
+          const productId = psnProductIdFromUrl(deal.url);
+          if (productId) {
+            keys.push(productId);
+          }
+          return keys;
+        }),
+    ),
+  ];
 
-  const metadataBySteamId: Record<string, Awaited<
-    ReturnType<typeof fetchGameMetadataBatchFromIgdb>
-  >[string]> = {};
-
+  const metadataBySteamId: Record<string, GameMetadata | null> = {};
   for (const batch of chunk(steamIdsNeedingLookup, IGDB_BATCH_SIZE)) {
-    const batchResult = await fetchGameMetadataBatchFromIgdb(batch);
-    Object.assign(metadataBySteamId, batchResult);
+    Object.assign(
+      metadataBySteamId,
+      await fetchGameMetadataBatchFromIgdb(batch),
+    );
   }
 
-  return deals.map((deal) => {
-    if (!deal.steamAppId) {
+  const metadataByPsnUid: Record<string, GameMetadata | null> = {};
+  for (const batch of chunk(psnUidsNeedingLookup, IGDB_BATCH_SIZE)) {
+    Object.assign(
+      metadataByPsnUid,
+      await fetchGameMetadataBatchFromExternalStore(
+        batch,
+        getIgdbPsnExternalGameSource(),
+      ),
+    );
+  }
+
+  let enriched = deals.map((deal) => {
+    if (!needsIgdbEnrichment(deal)) {
       return deal;
     }
 
-    const metadata = metadataBySteamId[deal.steamAppId];
-    if (!metadata) {
-      return deal;
+    if (deal.steamAppId) {
+      return mergeIgdbMetadata(deal, metadataBySteamId[deal.steamAppId]);
     }
 
-    return {
-      ...deal,
-      genres: deal.genres.length > 0 ? deal.genres : metadata.genres,
-      rating:
-        deal.rating !== null
-          ? deal.rating
-          : metadata.rating !== null
-            ? metadata.rating
-            : null,
-      ratingSource:
-        deal.rating !== null
-          ? deal.ratingSource
-          : metadata.rating !== null
-            ? "igdb"
-            : deal.ratingSource,
-    };
+    if (deal.source === "psn") {
+      const keys: string[] = [];
+      if (deal.externalStoreUid) {
+        keys.push(deal.externalStoreUid);
+      }
+      const productId = psnProductIdFromUrl(deal.url);
+      if (productId) {
+        keys.push(productId);
+      }
+      return mergeIgdbMetadata(deal, firstMatchingMetadata(keys, metadataByPsnUid));
+    }
+
+    return deal;
   });
+
+  const titlesNeedingLookup = [
+    ...new Set(
+      enriched
+        .filter(needsIgdbEnrichment)
+        .filter((deal) => lookupKeysForDeal(deal).length === 0)
+        .map((deal) => deal.title)
+        .filter(Boolean),
+    ),
+  ];
+
+  const metadataByTitle: Record<string, GameMetadata | null> = {};
+  for (const batch of chunk(titlesNeedingLookup, 50)) {
+    Object.assign(
+      metadataByTitle,
+      await fetchGameMetadataByExactTitles(batch),
+    );
+  }
+
+  enriched = enriched.map((deal) => {
+    if (!needsIgdbEnrichment(deal)) {
+      return deal;
+    }
+
+    if (lookupKeysForDeal(deal).length > 0) {
+      return deal;
+    }
+
+    return mergeIgdbMetadata(deal, metadataByTitle[deal.title]);
+  });
+
+  return enriched;
 }
