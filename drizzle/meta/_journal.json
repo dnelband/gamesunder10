@@ -50,6 +50,13 @@
       "when": 1784121737366,
       "tag": "0006_narrow_warstar",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784222059790,
+      "tag": "0007_foamy_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }

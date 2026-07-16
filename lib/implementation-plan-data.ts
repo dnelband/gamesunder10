@@ -103,7 +103,14 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "Deals listing page (server-side filters)",
         status: "done",
         notes:
-          "Expandable filters + pagination (24/page) via URL searchParams.",
+          "Expandable filters + pagination (24/page) via URL searchParams. Phase 1 UX: useTransition pending skeletons, stable filter shell, loading.tsx.",
+      },
+      {
+        id: "deals-perf",
+        title: "Deals listing performance (skeletons, slim queries, indexes)",
+        status: "done",
+        notes:
+          "Phases 1–3 + GIN indexes + 090-performance.mdc. Nested Suspense, next/image, Link prefetch, DealListing slim SELECT, DISTINCT unnest filter options.",
       },
       {
         id: "distribution-format",

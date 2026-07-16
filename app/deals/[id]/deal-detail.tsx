@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -47,11 +48,13 @@ export function DealDetail({ deal }: { deal: NormalizedDeal }) {
         <div className="grid lg:grid-cols-[minmax(0,340px)_1fr]">
           <div className="relative aspect-[3/4] bg-zinc-100 dark:bg-zinc-900 lg:min-h-full">
             {heroImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={heroImageUrl}
                 alt=""
-                className="h-full w-full object-cover"
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 340px"
+                className="object-cover"
               />
             ) : (
               <div className="flex h-full min-h-72 items-center justify-center text-sm text-zinc-500">
@@ -218,13 +221,14 @@ export function DealDetail({ deal }: { deal: NormalizedDeal }) {
               {deal.screenshotUrls.slice(0, 6).map((url) => (
                 <li
                   key={url}
-                  className="overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900"
+                  className="relative aspect-video overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={url}
                     alt=""
-                    className="aspect-video w-full object-cover"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover"
                   />
                 </li>
               ))}

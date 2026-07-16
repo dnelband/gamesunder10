@@ -1,0 +1,52 @@
+---
+description: Performance guidelines for deals listing, queries, and UI feedback
+alwaysApply: true
+---
+
+# Performance Guidelines
+
+Keep the deals listing fast as sources and row counts grow. Pair with
+`080-caching.mdc` (cache ownership) — this rule covers query shape, UI pending
+states, and images.
+
+## Data layer
+
+- **Listing queries never select detail-only columns** (`description`,
+  `screenshotUrls`, `coverUrl`, `normalizedTitle`, etc.). Use `DealListing`
+  (`types/deal.ts`) for cards; full `NormalizedDeal` only on detail / ingestion.
+- **Max 2 parallel DB round-trips per page view** on the common path. Prefer
+  combining or precomputing at cron over adding request-time queries.
+- **Budget: < 150ms total DB time on cache miss** in production (app near DB).
+- **Filter metadata** uses SQL (`DISTINCT unnest`), not JS full-table scans.
+  Once deal count exceeds ~2k and options queries slow down, precompute at cron.
+- Array filter columns (`platforms`, `genres`) need **GIN indexes**.
+
+## Caching
+
+- Page reads go through `lib/db/deals-cached.ts` with `cacheTag('deals')`.
+- Invalidate only from cron via `revalidateTag('deals', 'max')`.
+- Pass filter/page as **arguments** to `'use cache'` functions — never read
+  `searchParams` inside a cached function.
+- **Dev is not representative** — validate TTFB with
+  `npm run build && npm run start`.
+
+## UI / navigation
+
+- Filter and pagination changes must show **pending UI within ~50ms**
+  (`useTransition`, skeleton grid, or dim + “Updating…”).
+- Keep interactive filters **outside** the Suspense boundary that loads the
+  grid — shell stays mounted; only the results region suspends / swaps.
+- Skeleton layout must match the final grid (same columns / aspect ratios).
+- URL remains the source of truth for filters (shareable links).
+
+## Images
+
+- Use `next/image` with explicit `sizes` for the responsive grid.
+- Listing: default lazy. Detail hero: `priority`.
+- Add new storefront CDNs to `images.remotePatterns` in `next.config.ts`
+  when a source introduces unknown hosts.
+
+## Before merging perf-sensitive changes
+
+- Spot-check prod-build TTFB for `/deals`, one filter combo, and page 2.
+- If adding a DB query to a page: *can this run at cron instead?*

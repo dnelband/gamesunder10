@@ -1,9 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import type { MouseEvent } from "react";
 
 import {
   filtersToSearchParams,
   type DealListFilters,
 } from "@/lib/deals/filters";
+
+import { useDealsNav } from "./deals-nav";
 
 interface DealPaginationProps {
   filters: DealListFilters;
@@ -37,6 +42,8 @@ export function DealPagination({
   total,
   pageSize,
 }: DealPaginationProps) {
+  const { navigate, isPending } = useDealsNav();
+
   if (totalPages <= 1) {
     return null;
   }
@@ -52,10 +59,28 @@ export function DealPagination({
   const disabledClass =
     "inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-zinc-100 px-3 text-sm text-zinc-400 dark:border-zinc-800";
 
+  function onNavigate(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    if (!isPending) {
+      navigate(href);
+    }
+  }
+
   return (
     <nav
       className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between"
       aria-label="Pagination"
+      aria-busy={isPending}
     >
       <p className="text-sm text-zinc-500">
         {from}–{to} of {total}
@@ -63,7 +88,16 @@ export function DealPagination({
 
       <div className="flex flex-wrap items-center justify-center gap-2">
         {page > 1 ? (
-          <Link href={pageHref(filters, page - 1)} className={linkClass}>
+          <Link
+            href={pageHref(filters, page - 1)}
+            prefetch
+            onClick={(event) =>
+              onNavigate(event, pageHref(filters, page - 1))
+            }
+            className={linkClass}
+            aria-disabled={isPending}
+            tabIndex={isPending ? -1 : undefined}
+          >
             Previous
           </Link>
         ) : (
@@ -72,7 +106,14 @@ export function DealPagination({
 
         {pages[0] > 1 ? (
           <>
-            <Link href={pageHref(filters, 1)} className={linkClass}>
+            <Link
+              href={pageHref(filters, 1)}
+              prefetch
+              onClick={(event) => onNavigate(event, pageHref(filters, 1))}
+              className={linkClass}
+              aria-disabled={isPending}
+              tabIndex={isPending ? -1 : undefined}
+            >
               1
             </Link>
             {pages[0] > 2 ? (
@@ -92,7 +133,13 @@ export function DealPagination({
             <Link
               key={pageNumber}
               href={pageHref(filters, pageNumber)}
+              prefetch
+              onClick={(event) =>
+                onNavigate(event, pageHref(filters, pageNumber))
+              }
               className={linkClass}
+              aria-disabled={isPending}
+              tabIndex={isPending ? -1 : undefined}
             >
               {pageNumber}
             </Link>
@@ -106,14 +153,32 @@ export function DealPagination({
                 …
               </span>
             ) : null}
-            <Link href={pageHref(filters, totalPages)} className={linkClass}>
+            <Link
+              href={pageHref(filters, totalPages)}
+              prefetch
+              onClick={(event) =>
+                onNavigate(event, pageHref(filters, totalPages))
+              }
+              className={linkClass}
+              aria-disabled={isPending}
+              tabIndex={isPending ? -1 : undefined}
+            >
               {totalPages}
             </Link>
           </>
         ) : null}
 
         {page < totalPages ? (
-          <Link href={pageHref(filters, page + 1)} className={linkClass}>
+          <Link
+            href={pageHref(filters, page + 1)}
+            prefetch
+            onClick={(event) =>
+              onNavigate(event, pageHref(filters, page + 1))
+            }
+            className={linkClass}
+            aria-disabled={isPending}
+            tabIndex={isPending ? -1 : undefined}
+          >
             Next
           </Link>
         ) : (

@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   countActiveFilters,
@@ -9,6 +8,8 @@ import {
   filtersToSearchParams,
   type DealListFilters,
 } from "@/lib/deals/filters";
+
+import { useDealsNav } from "./deals-nav";
 
 interface DealFiltersProps {
   initialFilters: DealListFilters;
@@ -38,11 +39,25 @@ export function DealFilters({
   availableGenres,
   availablePlatforms,
 }: DealFiltersProps) {
-  const router = useRouter();
+  const { navigate, isPending } = useDealsNav();
   const [open, setOpen] = useState(
     () => countActiveFilters(initialFilters) > 0,
   );
+  const [filters, setFilters] = useState(initialFilters);
   const [searchText, setSearchText] = useState(initialFilters.q);
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
+
+  useEffect(() => {
+    setFilters(initialFilters);
+    setSearchText(initialFilters.q);
+  }, [
+    initialFilters.q,
+    initialFilters.minRating,
+    // Stable string deps so URL sync doesn't loop on new object identity.
+    initialFilters.platforms.join(","),
+    initialFilters.genres.join(","),
+  ]);
 
   const platformChoices = useMemo(() => {
     const fromDb = availablePlatforms.filter((platform) =>
@@ -51,30 +66,29 @@ export function DealFilters({
     return fromDb.length > 0 ? fromDb : [...FILTER_PLATFORMS];
   }, [availablePlatforms]);
 
-  const activeCount = countActiveFilters(initialFilters);
+  const activeCount = countActiveFilters(filters);
 
   function applyFilters(next: DealListFilters) {
+    setFilters(next);
     const params = filtersToSearchParams(next);
     const query = params.toString();
-    router.push(query ? `/deals?${query}` : "/deals");
+    navigate(query ? `/deals?${query}` : "/deals");
   }
 
   function update(partial: Partial<DealListFilters>) {
-    applyFilters({ ...initialFilters, ...partial });
+    applyFilters({ ...filtersRef.current, ...partial });
   }
 
   useEffect(() => {
-    if (searchText === initialFilters.q) {
+    if (searchText === filtersRef.current.q) {
       return;
     }
 
     const timer = setTimeout(() => {
-      applyFilters({ ...initialFilters, q: searchText.trim() });
+      applyFilters({ ...filtersRef.current, q: searchText.trim() });
     }, SEARCH_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-    // Only re-run when the typed search text changes; URL filters stay current
-    // via initialFilters closure at debounce fire time through the key remounts.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce search only
   }, [searchText]);
 
@@ -88,8 +102,20 @@ export function DealFilters({
     });
   }
 
+  const pillBase =
+    "cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium transition-colors";
+  const pillActive =
+    "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900";
+  const pillIdle =
+    "border-zinc-200 text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300";
+
   return (
-    <section className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+    <section
+      className={`overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 ${
+        isPending ? "opacity-80" : ""
+      }`}
+      aria-busy={isPending}
+    >
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -101,6 +127,11 @@ export function DealFilters({
           {activeCount > 0 ? (
             <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
               {activeCount}
+            </span>
+          ) : null}
+          {isPending ? (
+            <span className="text-[11px] font-medium text-zinc-500">
+              Updating…
             </span>
           ) : null}
         </span>
@@ -131,15 +162,11 @@ export function DealFilters({
             </legend>
             <div className="flex flex-wrap gap-2">
               {platformChoices.map((platform) => {
-                const checked = initialFilters.platforms.includes(platform);
+                const checked = filters.platforms.includes(platform);
                 return (
                   <label
                     key={platform}
-                    className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      checked
-                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                        : "border-zinc-200 text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300"
-                    }`}
+                    className={`${pillBase} ${checked ? pillActive : pillIdle}`}
                   >
                     <input
                       type="checkbox"
@@ -147,10 +174,7 @@ export function DealFilters({
                       checked={checked}
                       onChange={() =>
                         update({
-                          platforms: toggleValue(
-                            initialFilters.platforms,
-                            platform,
-                          ),
+                          platforms: toggleValue(filters.platforms, platform),
                         })
                       }
                     />
@@ -168,15 +192,11 @@ export function DealFilters({
               </legend>
               <div className="flex max-h-36 flex-wrap gap-2 overflow-y-auto">
                 {availableGenres.map((genre) => {
-                  const checked = initialFilters.genres.includes(genre);
+                  const checked = filters.genres.includes(genre);
                   return (
                     <label
                       key={genre}
-                      className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                        checked
-                          ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                          : "border-zinc-200 text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300"
-                      }`}
+                      className={`${pillBase} ${checked ? pillActive : pillIdle}`}
                     >
                       <input
                         type="checkbox"
@@ -184,7 +204,7 @@ export function DealFilters({
                         checked={checked}
                         onChange={() =>
                           update({
-                            genres: toggleValue(initialFilters.genres, genre),
+                            genres: toggleValue(filters.genres, genre),
                           })
                         }
                       />
@@ -202,15 +222,11 @@ export function DealFilters({
             </legend>
             <div className="flex flex-wrap gap-2">
               {RATING_OPTIONS.map((option) => {
-                const checked = initialFilters.minRating === option.value;
+                const checked = filters.minRating === option.value;
                 return (
                   <label
                     key={option.label}
-                    className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      checked
-                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                        : "border-zinc-200 text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300"
-                    }`}
+                    className={`${pillBase} ${checked ? pillActive : pillIdle}`}
                   >
                     <input
                       type="radio"

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -5,12 +6,15 @@ import {
   getScoreBadgeClass,
 } from "@/lib/format-rating";
 import { sortPlatforms } from "@/lib/format-platform";
-import type { NormalizedDeal } from "@/types/deal";
+import type { DealListing } from "@/types/deal";
 
 const overlayClass =
   "bg-white/90 shadow-sm backdrop-blur-sm dark:bg-zinc-950/90";
 
-export function DealCard({ deal }: { deal: NormalizedDeal }) {
+const cardImageSizes =
+  "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw";
+
+export function DealCard({ deal }: { deal: DealListing }) {
   const platforms = sortPlatforms(deal.platforms);
 
   return (
@@ -18,11 +22,12 @@ export function DealCard({ deal }: { deal: NormalizedDeal }) {
       <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100 dark:bg-zinc-900">
         <Link href={`/deals/${deal.id}`} className="absolute inset-0 block">
           {deal.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={deal.imageUrl}
               alt=""
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+              fill
+              sizes={cardImageSizes}
+              className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-zinc-500">

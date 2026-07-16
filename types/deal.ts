@@ -29,3 +29,20 @@ export interface NormalizedDeal {
   screenshotUrls: string[];
   fetchedAt: string;
 }
+
+/** Columns needed by deal cards / listing — never includes detail-only fields. */
+export type DealListing = Pick<
+  NormalizedDeal,
+  | "id"
+  | "title"
+  | "storeName"
+  | "priceEur"
+  | "originalPriceEur"
+  | "url"
+  | "imageUrl"
+  | "sourceReleaseDate"
+  | "genres"
+  | "platforms"
+  | "rating"
+  | "ratingSource"
+>;

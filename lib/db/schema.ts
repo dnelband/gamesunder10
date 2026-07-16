@@ -61,5 +61,7 @@ export const deals = pgTable(
     index("deals_steam_app_id_idx").on(table.steamAppId),
     index("deals_source_release_date_idx").on(table.sourceReleaseDate),
     index("deals_rating_idx").on(table.rating),
+    index("deals_platforms_gin_idx").using("gin", table.platforms),
+    index("deals_genres_gin_idx").using("gin", table.genres),
   ],
 );

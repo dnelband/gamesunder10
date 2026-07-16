@@ -19,12 +19,40 @@ interface IgdbGame {
 }
 
 const IGDB_STEAM_SOURCE = 1;
+const IGDB_MIN_REQUEST_INTERVAL_MS = 350;
+let lastIgdbRequestAt = 0;
+let igdbRequestQueue: Promise<void> = Promise.resolve();
 
 function igdbImageUrl(path: string | undefined): string | null {
   if (!path) {
     return null;
   }
   return path.replace("t_thumb", "t_cover_big").replace("//", "https://");
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function waitForIgdbRateLimit(): Promise<void> {
+  const previous = igdbRequestQueue;
+  let releaseQueue: () => void = () => {};
+  igdbRequestQueue = new Promise<void>((resolve) => {
+    releaseQueue = resolve;
+  });
+
+  await previous;
+
+  const now = Date.now();
+  const elapsed = now - lastIgdbRequestAt;
+  const waitMs = Math.max(0, IGDB_MIN_REQUEST_INTERVAL_MS - elapsed);
+  if (waitMs > 0) {
+    await sleep(waitMs);
+  }
+  lastIgdbRequestAt = Date.now();
+  releaseQueue();
 }
 
 async function igdbPost<T>(endpoint: string, body: string): Promise<T[]> {
@@ -34,6 +62,8 @@ async function igdbPost<T>(endpoint: string, body: string): Promise<T[]> {
   if (!clientId || !token) {
     return [];
   }
+
+  await waitForIgdbRateLimit();
 
   const response = await fetch(`https://api.igdb.com/v4/${endpoint}`, {
     method: "POST",
