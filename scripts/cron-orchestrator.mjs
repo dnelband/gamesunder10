@@ -5,7 +5,7 @@ config({ path: ".env.local" });
 /**
  * Remote (Vercel / CRON_BASE_URL): sources that tolerate cloud IPs.
  * Local (localhost): sources that rate-limit Vercel (CheapShark).
- * Keep in sync with app/api/cron/*/route.ts as new sources land.
+ * Keep in sync with the cron route files as new sources land.
  */
 const REMOTE_SOURCES = ["psn"];
 const LOCAL_SOURCES = ["cheapshark"];

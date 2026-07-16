@@ -96,6 +96,11 @@ function lookupKeysForDeal(deal: NormalizedDeal): string[] {
   return keys;
 }
 
+function titleLookupKey(deal: NormalizedDeal): string | null {
+  const title = deal.title.trim();
+  return title.length > 0 ? title : null;
+}
+
 /** Enrich deals from IGDB at cron time. Pages read Postgres only — no live IGDB. */
 export async function enrichDealsFromIgdb(
   deals: NormalizedDeal[],
@@ -178,9 +183,8 @@ export async function enrichDealsFromIgdb(
     ...new Set(
       enriched
         .filter(needsIgdbEnrichment)
-        .filter((deal) => lookupKeysForDeal(deal).length === 0)
-        .map((deal) => deal.title)
-        .filter(Boolean),
+        .map(titleLookupKey)
+        .filter((title): title is string => title !== null),
     ),
   ];
 
@@ -197,11 +201,8 @@ export async function enrichDealsFromIgdb(
       return deal;
     }
 
-    if (lookupKeysForDeal(deal).length > 0) {
-      return deal;
-    }
-
-    return mergeIgdbMetadata(deal, metadataByTitle[deal.title]);
+    const title = titleLookupKey(deal);
+    return title ? mergeIgdbMetadata(deal, metadataByTitle[title]) : deal;
   });
 
   return enriched;

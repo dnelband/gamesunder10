@@ -61,7 +61,7 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "PSN scraper",
         status: "done",
         notes:
-          "GraphQL categoryGridRetrieve, de-DE EUR, PS4/PS5 full games ≤€10; IGDB enrichment at cron; /api/cron/psn.",
+          "GraphQL categoryGridRetrieve, de-DE EUR, PS4/PS5 full games ≤€10; IGDB enrichment at cron with external ID lookup first, then conservative cleaned exact-title fallback; /api/cron/psn.",
       },
       {
         id: "xbox",
@@ -102,7 +102,8 @@ export const implementationPlan: ImplementationPhase[] = [
         id: "deals-listing",
         title: "Deals listing page (server-side filters)",
         status: "done",
-        notes: "Vertical slice listing live; filters still basic.",
+        notes:
+          "Expandable filters + pagination (24/page) via URL searchParams.",
       },
       {
         id: "distribution-format",

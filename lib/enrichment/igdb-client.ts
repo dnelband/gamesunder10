@@ -72,6 +72,20 @@ function escapeIgdbString(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
+function normalizeIgdbLookupTitle(title: string): string {
+  return title
+    // German and English storefront platform suffixes.
+    .replace(/\s+(for|für)\s+ps[45]\b/giu, "")
+    .replace(/\s+ps[45]\b/giu, "")
+    // Remove common trademark symbols seen in PSN titles.
+    .replace(/[™®©]/gu, "")
+    // Trim trailing storefront punctuation left after suffix removal.
+    .replace(/\s*[-:|]\s*$/u, "")
+    .replace(/\s+/gu, " ")
+    .trim()
+    .toLowerCase();
+}
+
 async function fetchGamesByIds(gameIds: number[]): Promise<IgdbGame[]> {
   if (gameIds.length === 0) {
     return [];
@@ -158,12 +172,18 @@ export async function fetchGameMetadataByExactTitles(
   }
 
   for (const title of titles) {
+    const normalizedTitle = normalizeIgdbLookupTitle(title);
     const games = await igdbPost<IgdbGame>(
       "games",
       `search "${escapeIgdbString(title)}"; fields name, summary, aggregated_rating, first_release_date, genres.name, cover.url, screenshots.url; limit 10;`,
     );
 
-    const exactMatch = games.find((game) => game.name === title);
+    const exactMatch = games.find((game) => {
+      if (!game.name) {
+        return false;
+      }
+      return normalizeIgdbLookupTitle(game.name) === normalizedTitle;
+    });
     if (exactMatch) {
       result[title] = mapGame(exactMatch);
     }
