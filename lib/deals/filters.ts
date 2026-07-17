@@ -1,5 +1,4 @@
 import {
-  CONSOLE_PLATFORMS,
   FILTER_PLATFORMS,
   type FilterPlatform,
 } from "@/lib/deals/platforms";
@@ -12,13 +11,6 @@ export interface DealListFilters {
   genres: string[];
   minRating: number | null;
 }
-
-export const EMPTY_DEAL_FILTERS: DealListFilters = {
-  q: "",
-  platforms: [],
-  genres: [],
-  minRating: null,
-};
 
 function isFilterPlatform(platform: string): platform is FilterPlatform {
   return (FILTER_PLATFORMS as readonly string[]).includes(platform);

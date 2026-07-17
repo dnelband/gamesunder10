@@ -53,11 +53,11 @@ export function DealPagination({
   const pages = pageWindow(page, totalPages);
 
   const linkClass =
-    "inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-zinc-200 px-3 text-sm font-medium transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
+    "inline-flex h-10 min-w-10 items-center justify-center rounded-md border border-stroke px-3 text-sm font-medium text-fg transition-colors duration-150 hover:bg-surface-2";
   const activeClass =
-    "inline-flex h-10 min-w-10 items-center justify-center rounded-full bg-foreground px-3 text-sm font-semibold text-background";
+    "inline-flex h-10 min-w-10 items-center justify-center rounded-md bg-accent px-3 text-sm font-semibold text-fg";
   const disabledClass =
-    "inline-flex h-10 min-w-10 items-center justify-center rounded-full border border-zinc-100 px-3 text-sm text-zinc-400 dark:border-zinc-800";
+    "inline-flex h-10 min-w-10 items-center justify-center rounded-md border border-stroke/50 px-3 text-sm text-muted/50";
 
   function onNavigate(event: MouseEvent<HTMLAnchorElement>, href: string) {
     if (
@@ -82,7 +82,7 @@ export function DealPagination({
       aria-label="Pagination"
       aria-busy={isPending}
     >
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-muted">
         {from}–{to} of {total}
       </p>
 
@@ -117,7 +117,7 @@ export function DealPagination({
               1
             </Link>
             {pages[0] > 2 ? (
-              <span className="px-1 text-zinc-400" aria-hidden>
+              <span className="px-1 text-muted" aria-hidden>
                 …
               </span>
             ) : null}
@@ -149,7 +149,7 @@ export function DealPagination({
         {pages[pages.length - 1] < totalPages ? (
           <>
             {pages[pages.length - 1] < totalPages - 1 ? (
-              <span className="px-1 text-zinc-400" aria-hidden>
+              <span className="px-1 text-muted" aria-hidden>
                 …
               </span>
             ) : null}

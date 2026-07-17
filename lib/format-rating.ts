@@ -27,22 +27,22 @@ export function formatRatingBadgeValue(
   return source === "steam" ? `${value}%` : `${value}`;
 }
 
-/** Metacritic-style score colors; Steam uses a distinct neutral badge. */
+/** Score badge colors aligned to Arcade brand tokens. */
 export function getScoreBadgeClass(
   rating: number,
   source: RatingSource,
 ): string {
   if (source === "steam") {
-    return "bg-slate-800 text-white";
+    return "bg-surface-2 text-fg";
   }
 
   if (rating >= 75) {
-    return "bg-emerald-600 text-white";
+    return "bg-cut text-bg";
   }
   if (rating >= 50) {
-    return "bg-amber-400 text-zinc-900";
+    return "bg-price text-bg";
   }
-  return "bg-red-600 text-white";
+  return "bg-danger text-fg";
 }
 
 export function formatRatingSourceLabel(source: RatingSource): string {

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -15,6 +16,8 @@ interface DealFiltersProps {
   initialFilters: DealListFilters;
   availableGenres: string[];
   availablePlatforms: string[];
+  /** Shown on the same row as Filters / Clear (e.g. result count). */
+  summary?: ReactNode;
 }
 
 const RATING_OPTIONS = [
@@ -38,6 +41,7 @@ export function DealFilters({
   initialFilters,
   availableGenres,
   availablePlatforms,
+  summary,
 }: DealFiltersProps) {
   const { navigate, isPending } = useDealsNav();
   const [open, setOpen] = useState(
@@ -102,48 +106,59 @@ export function DealFilters({
     });
   }
 
-  const pillBase =
-    "cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium transition-colors";
-  const pillActive =
-    "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900";
-  const pillIdle =
-    "border-zinc-200 text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300";
+  const chipBase =
+    "cursor-pointer rounded-md border px-3 py-1.5 text-xs font-medium transition-colors duration-150";
+  const chipActive = "border-accent bg-accent text-fg";
+  const chipIdle =
+    "border-stroke bg-surface-2 text-muted hover:border-muted hover:text-fg";
 
   return (
-    <section
-      className={`overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 ${
-        isPending ? "opacity-80" : ""
-      }`}
-      aria-busy={isPending}
-    >
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
-        aria-expanded={open}
-      >
-        <span className="flex items-center gap-2">
-          <span className="text-sm font-semibold">Filters</span>
-          {activeCount > 0 ? (
-            <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
-              {activeCount}
+    <section className="flex flex-col gap-3" aria-busy={isPending}>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            className="inline-flex h-9 items-center gap-2 rounded-md border border-stroke bg-surface px-3 text-sm font-semibold text-fg transition-colors duration-150 hover:bg-surface-2"
+            aria-expanded={open}
+          >
+            Filters
+            {activeCount > 0 ? (
+              <span className="rounded bg-accent px-1.5 py-0.5 text-[11px] font-semibold leading-none text-fg">
+                {activeCount}
+              </span>
+            ) : null}
+            <span className="text-muted" aria-hidden>
+              {open ? "−" : "+"}
             </span>
+          </button>
+
+          {activeCount > 0 ? (
+            <button
+              type="button"
+              onClick={onClear}
+              className="inline-flex h-9 items-center rounded-md border border-stroke px-3 text-sm font-medium text-muted transition-colors duration-150 hover:border-muted hover:text-fg"
+            >
+              Clear
+            </button>
           ) : null}
+
           {isPending ? (
-            <span className="text-[11px] font-medium text-zinc-500">
+            <span className="text-[11px] font-medium text-accent">
               Updating…
             </span>
           ) : null}
-        </span>
-        <span className="text-sm text-zinc-500" aria-hidden>
-          {open ? "−" : "+"}
-        </span>
-      </button>
+        </div>
+
+        {summary ? (
+          <div className="text-sm text-muted">{summary}</div>
+        ) : null}
+      </div>
 
       {open ? (
-        <div className="flex flex-col gap-5 border-t border-zinc-200 px-4 py-4 dark:border-zinc-800">
+        <div className="flex flex-col gap-5 rounded-lg border border-stroke bg-surface px-4 py-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-muted">
               Search
             </span>
             <input
@@ -152,12 +167,12 @@ export function DealFilters({
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
               placeholder="Game title…"
-              className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-900"
+              className="h-10 rounded-md border border-stroke bg-bg px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent"
             />
           </label>
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <legend className="text-[11px] font-medium uppercase tracking-wide text-muted">
               Platform
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -166,7 +181,7 @@ export function DealFilters({
                 return (
                   <label
                     key={platform}
-                    className={`${pillBase} ${checked ? pillActive : pillIdle}`}
+                    className={`${chipBase} ${checked ? chipActive : chipIdle}`}
                   >
                     <input
                       type="checkbox"
@@ -187,7 +202,7 @@ export function DealFilters({
 
           {availableGenres.length > 0 ? (
             <fieldset className="flex flex-col gap-2">
-              <legend className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              <legend className="text-[11px] font-medium uppercase tracking-wide text-muted">
                 Genre
               </legend>
               <div className="flex max-h-36 flex-wrap gap-2 overflow-y-auto">
@@ -196,7 +211,7 @@ export function DealFilters({
                   return (
                     <label
                       key={genre}
-                      className={`${pillBase} ${checked ? pillActive : pillIdle}`}
+                      className={`${chipBase} ${checked ? chipActive : chipIdle}`}
                     >
                       <input
                         type="checkbox"
@@ -217,7 +232,7 @@ export function DealFilters({
           ) : null}
 
           <fieldset className="flex flex-col gap-2">
-            <legend className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <legend className="text-[11px] font-medium uppercase tracking-wide text-muted">
               Min rating
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -226,7 +241,7 @@ export function DealFilters({
                 return (
                   <label
                     key={option.label}
-                    className={`${pillBase} ${checked ? pillActive : pillIdle}`}
+                    className={`${chipBase} ${checked ? chipActive : chipIdle}`}
                   >
                     <input
                       type="radio"
@@ -241,18 +256,6 @@ export function DealFilters({
               })}
             </div>
           </fieldset>
-
-          {activeCount > 0 ? (
-            <div>
-              <button
-                type="button"
-                onClick={onClear}
-                className="inline-flex h-10 items-center rounded-full border border-zinc-200 px-5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
-              >
-                Clear
-              </button>
-            </div>
-          ) : null}
         </div>
       ) : null}
     </section>

@@ -10,13 +10,13 @@ import { Suspense } from "react";
 function statusBadgeClass(status: SourceHealthStatus | "unknown"): string {
   switch (status) {
     case "ok":
-      return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300";
+      return "bg-cut/15 text-cut";
     case "degraded":
-      return "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300";
+      return "bg-price/20 text-price";
     case "broken":
-      return "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300";
+      return "bg-danger/15 text-danger";
     default:
-      return "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400";
+      return "bg-surface-2 text-muted";
   }
 }
 
@@ -57,9 +57,7 @@ export default function StatusPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto px-6 py-12 text-zinc-600 dark:text-zinc-400">
-          Loading status…
-        </div>
+        <div className="mx-auto px-6 py-12 text-muted">Loading status…</div>
       }
     >
       <StatusContent />
@@ -73,18 +71,22 @@ async function StatusContent() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-6 py-12">
       <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Status</h1>
-        <p className="text-zinc-600 dark:text-zinc-400">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
+          Status
+        </h1>
+        <p className="text-muted">
           Source health from real cron runs and implementation progress tracked
           in code.
         </p>
       </header>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-medium">Source health</h2>
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <h2 className="font-display text-xl font-semibold text-fg">
+          Source health
+        </h2>
+        <div className="overflow-x-auto rounded-lg border border-stroke">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+            <thead className="bg-surface text-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 font-medium">Status</th>
@@ -96,28 +98,25 @@ async function StatusContent() {
             </thead>
             <tbody>
               {sourceRows.map((row) => (
-                <tr
-                  key={row.source}
-                  className="border-t border-zinc-200 dark:border-zinc-800"
-                >
-                  <td className="px-4 py-3 font-mono">{row.source}</td>
+                <tr key={row.source} className="border-t border-stroke">
+                  <td className="px-4 py-3 font-mono text-fg">{row.source}</td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(
+                      className={`inline-flex rounded-md px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(
                         row.status === "unknown" ? "unknown" : row.status,
                       )}`}
                     >
                       {row.status === "unknown" ? "not run" : row.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap text-muted">
                     {formatTimestamp(row.lastSuccessAt)}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap text-muted">
                     {formatTimestamp(row.lastFailureAt)}
                   </td>
-                  <td className="px-4 py-3">{row.consecutiveFailures}</td>
-                  <td className="max-w-xs truncate px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  <td className="px-4 py-3 text-fg">{row.consecutiveFailures}</td>
+                  <td className="max-w-xs truncate px-4 py-3 text-muted">
                     {row.lastError ?? "—"}
                   </td>
                 </tr>
@@ -128,18 +127,20 @@ async function StatusContent() {
       </section>
 
       <section className="flex flex-col gap-6">
-        <h2 className="text-xl font-medium">Implementation plan</h2>
+        <h2 className="font-display text-xl font-semibold text-fg">
+          Implementation plan
+        </h2>
         {implementationPlan.map((phase) => (
           <div key={phase.id} className="flex flex-col gap-3">
-            <h3 className="text-lg font-medium">{phase.title}</h3>
+            <h3 className="text-lg font-medium text-fg">{phase.title}</h3>
             <ul className="flex flex-col gap-2">
               {phase.tasks.map((task) => (
                 <li
                   key={task.id}
-                  className="flex items-start gap-3 rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
+                  className="flex items-start gap-3 rounded-lg border border-stroke bg-surface px-4 py-3"
                 >
                   <span
-                    className={`mt-0.5 inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusBadgeClass(
+                    className={`mt-0.5 inline-flex shrink-0 rounded-md px-2 py-0.5 text-xs font-medium capitalize ${statusBadgeClass(
                       task.status === "done"
                         ? "ok"
                         : task.status === "blocked"
@@ -152,11 +153,9 @@ async function StatusContent() {
                     {taskStatusLabel(task.status)}
                   </span>
                   <div className="flex flex-col gap-1">
-                    <span>{task.title}</span>
+                    <span className="text-fg">{task.title}</span>
                     {task.notes ? (
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                        {task.notes}
-                      </span>
+                      <span className="text-sm text-muted">{task.notes}</span>
                     ) : null}
                   </div>
                 </li>

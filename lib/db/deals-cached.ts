@@ -1,29 +1,14 @@
 import { cacheLife, cacheTag } from "next/cache";
 
 import type { DealListFilters } from "@/lib/deals/filters";
-import type { NormalizedDeal } from "@/types/deal";
-
-import {
-  getDealById,
-  getGameOfferByGroupKey,
-  listDealFilterOptions,
-  listDealsPage,
-  listGameOffersPage,
-  type DealListPage,
-  type GameOfferListPage,
-} from "./deals";
 import type { GameOfferDetail } from "@/types/deal";
 
-export async function getCachedDealsPage(
-  filters: DealListFilters,
-  page: number,
-  pageSize?: number,
-): Promise<DealListPage> {
-  "use cache";
-  cacheTag("deals");
-  cacheLife("hours");
-  return listDealsPage(filters, page, pageSize);
-}
+import {
+  getGameOfferByGroupKey,
+  listDealFilterOptions,
+  listGameOffersPage,
+  type GameOfferListPage,
+} from "./deals";
 
 export async function getCachedGameOffersPage(
   filters: DealListFilters,
@@ -44,15 +29,6 @@ export async function getCachedDealFilterOptions(): Promise<{
   cacheTag("deals");
   cacheLife("hours");
   return listDealFilterOptions();
-}
-
-export async function getCachedDealById(
-  id: string,
-): Promise<NormalizedDeal | null> {
-  "use cache";
-  cacheTag("deals");
-  cacheLife("hours");
-  return getDealById(id);
 }
 
 export async function getCachedGameOfferByGroupKey(

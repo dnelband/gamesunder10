@@ -122,6 +122,13 @@ export const implementationPlan: ImplementationPhase[] = [
           "Listing shows GameOffer cards; detail at /deals/[groupKey] with all store offers. PC and console kept separate.",
       },
       {
+        id: "branding-v1",
+        title: "Broke Gamer Arcade branding (tokens, fonts, deals UI)",
+        status: "done",
+        notes:
+          "Dark warm + heat palette; Bricolage + DM Sans; wordmark + tagline; cover-first cards with --price/--cut; BG favicon.",
+      },
+      {
         id: "distribution-format",
         title: "Physical vs digital indicator on deals",
         status: "planned",

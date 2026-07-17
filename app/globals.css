@@ -1,26 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #12100e;
+  --surface: #1c1916;
+  --surface-2: #2a2521;
+  --text: #f7f3ec;
+  --text-muted: #a89f94;
+  --accent: #ff5a1f;
+  --price: #ffc857;
+  --cut: #3ddc97;
+  --stroke: #3a342e;
+  --danger: #ff6b6b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-price: var(--price);
+  --color-cut: var(--cut);
+  --color-stroke: var(--stroke);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-dm-sans), "Source Sans 3", ui-sans-serif, system-ui,
+    sans-serif;
+  --font-display: var(--font-bricolage), Outfit, "Space Grotesk", ui-sans-serif,
+    system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--text);
 }

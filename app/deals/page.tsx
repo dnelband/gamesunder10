@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { BrandWordmark } from "@/components/brand-wordmark";
 import {
   getCachedDealFilterOptions,
   getCachedGameOffersPage,
@@ -16,15 +17,20 @@ import { DealPagination } from "./deal-pagination";
 import {
   DealFiltersSkeleton,
   DealsGridSkeleton,
+  DealsSummarySkeleton,
 } from "./deals-grid-skeleton";
 import { DealsShell } from "./deals-shell";
+import { EmptyDealsMessage } from "./empty-deals-message";
 
 function DealsPageFallback() {
   return (
-    <>
-      <DealFiltersSkeleton />
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <DealFiltersSkeleton />
+        <DealsSummarySkeleton />
+      </div>
       <DealsGridSkeleton />
-    </>
+    </div>
   );
 }
 
@@ -41,12 +47,8 @@ function resultsKey(filters: DealListFilters, page: number): string {
 export default function DealsPage(props: PageProps<"/deals">) {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Deals under €10</h1>
-        <p className="text-zinc-600 dark:text-zinc-400">
-          Grouped by game (cheapest store first). Sorted by original price
-          (highest first), then release date (newest first).
-        </p>
+      <header>
+        <BrandWordmark size="lg" />
       </header>
 
       <Suspense fallback={<DealsPageFallback />}>
@@ -62,20 +64,43 @@ async function DealsBrowse(props: PageProps<"/deals">) {
   const filters = parseDealFilters(searchParams);
   const page = parsePage(searchParams);
   const filterOptions = await getCachedDealFilterOptions();
+  const key = resultsKey(filters, page);
 
   return (
     <DealsShell
       initialFilters={filters}
       availableGenres={filterOptions.genres}
       availablePlatforms={filterOptions.platforms}
+      summary={
+        <Suspense key={key} fallback={<DealsSummarySkeleton />}>
+          <DealsSummary filters={filters} page={page} />
+        </Suspense>
+      }
     >
-      <Suspense
-        key={resultsKey(filters, page)}
-        fallback={<DealsGridSkeleton />}
-      >
+      <Suspense key={key} fallback={<DealsGridSkeleton />}>
         <DealsResults filters={filters} page={page} />
       </Suspense>
     </DealsShell>
+  );
+}
+
+async function DealsSummary({
+  filters,
+  page: requestedPage,
+}: {
+  filters: DealListFilters;
+  page: number;
+}) {
+  const { total, page, totalPages } = await getCachedGameOffersPage(
+    filters,
+    requestedPage,
+  );
+
+  return (
+    <>
+      {total} game{total === 1 ? "" : "s"}
+      {totalPages > 1 ? ` · page ${page} of ${totalPages}` : ""}
+    </>
   );
 }
 
@@ -89,38 +114,31 @@ async function DealsResults({
   const result = await getCachedGameOffersPage(filters, requestedPage);
   const { games, total, page, pageSize, totalPages } = result;
 
+  if (games.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-stroke bg-surface px-4 py-10 text-center">
+        <EmptyDealsMessage />
+      </div>
+    );
+  }
+
   return (
-    <>
-      <p className="mb-8 text-sm text-zinc-500">
-        {total} game{total === 1 ? "" : "s"}
-        {totalPages > 1 ? ` · page ${page} of ${totalPages}` : ""}
-      </p>
+    <div className="flex flex-col gap-8">
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+        {games.map((game) => (
+          <li key={game.groupKey}>
+            <GameOfferCard game={game} />
+          </li>
+        ))}
+      </ul>
 
-      {games.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-zinc-300 px-4 py-8 text-center text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-          No games match these filters. Try clearing filters, or run ingestion:{" "}
-          <code className="font-mono text-sm">pnpm run cron</code> /{" "}
-          <code className="font-mono text-sm">pnpm run cron-local</code>
-        </p>
-      ) : (
-        <div className="flex flex-col gap-8">
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-            {games.map((game) => (
-              <li key={game.groupKey}>
-                <GameOfferCard game={game} />
-              </li>
-            ))}
-          </ul>
-
-          <DealPagination
-            filters={filters}
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            pageSize={pageSize}
-          />
-        </div>
-      )}
-    </>
+      <DealPagination
+        filters={filters}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={pageSize}
+      />
+    </div>
   );
 }

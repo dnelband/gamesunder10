@@ -9,9 +9,16 @@ import { GameOfferDetailView } from "./deal-detail";
 
 function DealDetailFallback() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-      <div className="h-8 w-24 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
-      <div className="mt-6 h-[480px] animate-pulse rounded-2xl bg-zinc-200 dark:bg-zinc-800" />
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 py-8 sm:px-6 sm:py-10">
+      <div className="h-7 w-36 animate-pulse rounded bg-surface-2" />
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:gap-12">
+        <div className="aspect-[3/4] animate-pulse rounded-lg bg-surface-2" />
+        <div className="flex flex-col justify-center gap-4">
+          <div className="h-4 w-40 animate-pulse rounded bg-surface-2" />
+          <div className="h-12 w-3/4 animate-pulse rounded bg-surface-2" />
+          <div className="h-10 w-32 animate-pulse rounded bg-surface-2" />
+        </div>
+      </div>
     </div>
   );
 }

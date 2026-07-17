@@ -1,8 +1,6 @@
 import {
   and,
   arrayOverlaps,
-  count,
-  desc,
   eq,
   gte,
   ilike,
@@ -49,14 +47,6 @@ const listingColumns = {
   rating: deals.rating,
   ratingSource: deals.ratingSource,
 } as const;
-
-export interface DealListPage {
-  deals: DealListing[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
 
 export interface GameOfferListPage {
   games: GameOffer[];
@@ -288,68 +278,6 @@ export async function upsertDeals(items: NormalizedDeal[]): Promise<number> {
   return items.length;
 }
 
-export async function listDealsPage(
-  filters: DealListFilters = {
-    q: "",
-    platforms: [],
-    genres: [],
-    minRating: null,
-  },
-  page = 1,
-  pageSize = DEFAULT_PAGE_SIZE,
-): Promise<DealListPage> {
-  const safePageSize = Math.max(1, Math.min(pageSize, 100));
-  const where = and(...buildDealFilters(filters));
-  const requestedPage = Math.max(1, page);
-  const offset = (requestedPage - 1) * safePageSize;
-
-  const orderBy = [
-    desc(deals.originalPriceEur),
-    sql`${deals.sourceReleaseDate} desc nulls last`,
-  ] as const;
-
-  const [totalRows, rows] = await Promise.all([
-    db.select({ total: count() }).from(deals).where(where),
-    db
-      .select(listingColumns)
-      .from(deals)
-      .where(where)
-      .orderBy(...orderBy)
-      .limit(safePageSize)
-      .offset(offset),
-  ]);
-
-  const total = totalRows[0]?.total ?? 0;
-  const totalPages = total === 0 ? 1 : Math.ceil(total / safePageSize);
-  const safePage = Math.min(requestedPage, totalPages);
-
-  if (total > 0 && requestedPage > totalPages) {
-    const correctedRows = await db
-      .select(listingColumns)
-      .from(deals)
-      .where(where)
-      .orderBy(...orderBy)
-      .limit(safePageSize)
-      .offset((safePage - 1) * safePageSize);
-
-    return {
-      deals: correctedRows.map(rowToListing),
-      total,
-      page: safePage,
-      pageSize: safePageSize,
-      totalPages,
-    };
-  }
-
-  return {
-    deals: rows.map(rowToListing),
-    total,
-    page: safePage,
-    pageSize: safePageSize,
-    totalPages,
-  };
-}
-
 const groupingColumns = {
   ...listingColumns,
   normalizedTitle: deals.normalizedTitle,
@@ -413,12 +341,6 @@ export async function listDealFilterOptions(): Promise<{
     platforms: platformRows.map((row) => row.value).filter(Boolean),
     genres: genreRows.map((row) => row.value).filter(Boolean),
   };
-}
-
-export async function getDealById(id: string): Promise<NormalizedDeal | null> {
-  const rows = await db.select().from(deals).where(eq(deals.id, id)).limit(1);
-  const row = rows[0];
-  return row ? rowToDeal(row) : null;
 }
 
 export async function getGameOfferByGroupKey(
