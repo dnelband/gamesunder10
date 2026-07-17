@@ -2,6 +2,8 @@ import type { DealSource } from "@/types/deal-source";
 
 export type RatingSource = "metacritic" | "steam" | "store" | "igdb";
 
+export type DistributionFormat = "digital" | "physical" | "unknown";
+
 export interface NormalizedDeal {
   id: string;
   source: DealSource;
@@ -19,6 +21,8 @@ export interface NormalizedDeal {
   imageUrl: string | null;
   region: string | null;
   sourceReleaseDate: string | null;
+  /** What the buyer receives — never guess; prefer unknown over wrong. */
+  distributionFormat: DistributionFormat;
   genres: string[];
   platforms: string[];
   rating: number | null;
@@ -34,13 +38,16 @@ export interface NormalizedDeal {
 export type DealListing = Pick<
   NormalizedDeal,
   | "id"
+  | "source"
   | "title"
   | "storeName"
+  | "steamAppId"
   | "priceEur"
   | "originalPriceEur"
   | "url"
   | "imageUrl"
   | "sourceReleaseDate"
+  | "distributionFormat"
   | "genres"
   | "platforms"
   | "rating"
@@ -57,6 +64,7 @@ export interface GameOffer {
   rating: number | null;
   ratingSource: RatingSource | null;
   sourceReleaseDate: string | null;
+  distributionFormat: DistributionFormat;
   minPriceEur: number;
   maxOriginalPriceEur: number;
   offers: DealListing[];
@@ -75,6 +83,7 @@ export interface GameOfferDetail {
   coverUrl: string | null;
   screenshotUrls: string[];
   sourceReleaseDate: string | null;
+  distributionFormat: DistributionFormat;
   minPriceEur: number;
   maxOriginalPriceEur: number;
   offers: DealListing[];

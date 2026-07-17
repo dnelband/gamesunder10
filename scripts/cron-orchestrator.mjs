@@ -7,7 +7,7 @@ config({ path: ".env.local" });
  * Local (localhost): sources that rate-limit Vercel (CheapShark).
  * Keep in sync with the cron route files as new sources land.
  */
-const REMOTE_SOURCES = ["psn", "xbox"];
+const REMOTE_SOURCES = ["psn", "xbox", "ebay"];
 const LOCAL_SOURCES = ["cheapshark"];
 
 function readEnv(name) {
@@ -87,13 +87,16 @@ async function runSource(source, baseUrl, secret) {
     clearInterval(tick);
 
     if (response.ok && body.ok) {
+      const ingested = body.dealsIngested ?? 0;
+      const deleted = body.dealsDeleted ?? 0;
       process.stdout.write(
-        `\r[${source}] ✓ ${body.dealsIngested ?? 0} deals ingested in ${elapsed}\n`,
+        `\r[${source}] ✓ ${ingested} ingested, ${deleted} deleted in ${elapsed}\n`,
       );
       return {
         source,
         ok: true,
-        dealsIngested: body.dealsIngested ?? 0,
+        dealsIngested: ingested,
+        dealsDeleted: deleted,
         elapsedMs: Date.now() - started,
       };
     }
@@ -147,13 +150,17 @@ const totalDeals = results.reduce(
   (sum, result) => sum + (result.dealsIngested ?? 0),
   0,
 );
+const totalDeleted = results.reduce(
+  (sum, result) => sum + (result.dealsDeleted ?? 0),
+  0,
+);
 const failed = results.filter((result) => !result.ok);
 const succeeded = results.filter((result) => result.ok);
 
 console.log("");
 console.log("Summary");
 console.log(`  OK:    ${succeeded.length}/${results.length} sources`);
-console.log(`  Deals: ${totalDeals} total ingested`);
+console.log(`  Deals: ${totalDeals} ingested, ${totalDeleted} deleted`);
 console.log(`  Time:  ${formatDuration(Date.now() - runStarted)}`);
 
 if (failed.length > 0) {

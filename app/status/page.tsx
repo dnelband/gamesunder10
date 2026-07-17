@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { Suspense } from "react";
+
 import { implementationPlan } from "@/lib/implementation-plan-data";
 import {
   listSourceHealth,
@@ -5,7 +8,6 @@ import {
   type SourceHealthStatus,
 } from "@/lib/db/source-health";
 import { DEAL_SOURCES } from "@/types/deal-source";
-import { Suspense } from "react";
 
 function statusBadgeClass(status: SourceHealthStatus | "unknown"): string {
   switch (status) {
@@ -71,9 +73,17 @@ async function StatusContent() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-6 py-12">
       <header className="flex flex-col gap-2">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
-          Status
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
+            Status
+          </h1>
+          <Link
+            href="/stores"
+            className="text-sm text-muted transition-colors hover:text-fg"
+          >
+            Store link builders →
+          </Link>
+        </div>
         <p className="text-muted">
           Source health from real cron runs and implementation progress tracked
           in code.

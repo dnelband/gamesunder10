@@ -11,8 +11,10 @@ globs:
 - Use a typed query layer (Drizzle preferred over Prisma for this project — lighter,
   closer to raw SQL, good fit for a single-table-heavy deals schema). Confirm
   choice before scaffolding migrations if not already decided.
-- Core table: `deals`, keyed on the `NormalizedDeal.id` hash. Upsert on ingestion
-  (`ON CONFLICT (id) DO UPDATE`) — never insert duplicates per refresh cycle.
+- Core table: `deals`, keyed on the `NormalizedDeal.id` hash. Cron ingestion uses
+  `syncSourceDeals(source, items)`: upsert the run, then delete other rows for that
+  source (`id NOT IN` keep-set). Empty runs never delete (avoid wiping on a blank
+  fetch). Never insert duplicates per refresh cycle.
 - Keep a `deal_history` table (or a `previous_price` column) if/when historical low
   tracking matters — don't overwrite price history silently.
 - Filtering (price under €10, store, discount %) happens in SQL via query params,

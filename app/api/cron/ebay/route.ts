@@ -4,7 +4,7 @@ import { isAuthorizedCronRequest } from "@/lib/cron/auth";
 import { syncSourceDeals } from "@/lib/db/deals";
 import { recordSourceRun } from "@/lib/db/source-health";
 import { enrichDealsFromIgdb } from "@/lib/enrichment/enrich-deals-from-igdb";
-import { fetchDeals } from "@/lib/sources/xbox/fetch-deals";
+import { fetchDeals } from "@/lib/sources/ebay/fetch-deals";
 
 export async function GET(request: Request): Promise<Response> {
   if (!isAuthorizedCronRequest(request)) {
@@ -14,8 +14,8 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const rawDeals = await fetchDeals();
     const deals = await enrichDealsFromIgdb(rawDeals);
-    const { upserted, deleted } = await syncSourceDeals("xbox", deals);
-    await recordSourceRun("xbox", {
+    const { upserted, deleted } = await syncSourceDeals("ebay", deals);
+    await recordSourceRun("ebay", {
       success: true,
       dealsIngested: upserted,
     });
@@ -23,13 +23,13 @@ export async function GET(request: Request): Promise<Response> {
 
     return Response.json({
       ok: true,
-      source: "xbox",
+      source: "ebay",
       dealsIngested: upserted,
       dealsDeleted: deleted,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    await recordSourceRun("xbox", { success: false, error: message });
+    await recordSourceRun("ebay", { success: false, error: message });
     return Response.json({ ok: false, error: message }, { status: 500 });
   }
 }

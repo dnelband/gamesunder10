@@ -99,6 +99,7 @@ export function normalizeXboxProduct(
     imageUrl,
     region: "DE",
     sourceReleaseDate: product.releaseDate ?? null,
+    distributionFormat: "digital",
     genres: product.categories ?? [],
     platforms,
     rating,

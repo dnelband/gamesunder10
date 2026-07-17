@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:reset": "node scripts/db-reset.mjs",
     "cron": "node scripts/cron-orchestrator.mjs",
-    "cron-local": "node scripts/cron-orchestrator.mjs --local"
+    "cron-local": "node scripts/cron-orchestrator.mjs --local",
+    "smoke:store-urls": "npx tsx --env-file=.env.local scripts/smoke-store-urls.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

@@ -3,7 +3,6 @@ import { buildDealId, normalizeTitle } from "@/lib/deal-utils";
 import type { NormalizedDeal, RatingSource } from "@/types/deal";
 
 import type { CheapsharkDeal } from "./schema";
-import { buildCheapsharkStoreUrl } from "./store-url";
 
 const MAX_PRICE_EUR = 10;
 
@@ -47,6 +46,8 @@ export function normalizeCheapsharkDeal(
   const steamAppId =
     deal.steamAppID && deal.steamAppID !== "0" ? deal.steamAppID : null;
   const { rating, ratingSource } = cheapsharkRating(deal);
+  const storeName =
+    storeNames.get(deal.storeID) ?? `Store ${deal.storeID}`;
 
   return {
     id: buildDealId("cheapshark", deal.dealID),
@@ -55,15 +56,17 @@ export function normalizeCheapsharkDeal(
     normalizedTitle: normalizeTitle(deal.title),
     steamAppId,
     externalStoreUid: null,
-    storeName: storeNames.get(deal.storeID) ?? `Store ${deal.storeID}`,
+    storeName,
     priceEur,
     originalPriceEur,
     discountPercent: Math.round(Number.parseFloat(deal.savings)),
     currencyOriginal: "USD",
-    url: buildCheapsharkStoreUrl(deal),
+    // Product URL resolved at render via resolveOfferUrl — not stored as source of truth.
+    url: "",
     imageUrl: deal.thumb || null,
     region: null,
     sourceReleaseDate: sourceReleaseDate(deal.releaseDate),
+    distributionFormat: "digital",
     genres: [],
     platforms: ["PC"],
     rating,

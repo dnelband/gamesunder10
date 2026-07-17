@@ -89,6 +89,7 @@ export function normalizePsnProduct(product: PsnProduct): NormalizedDeal | null 
     imageUrl: pickImageUrl(product),
     region: getPsnRegion(),
     sourceReleaseDate: null,
+    distributionFormat: "digital",
     genres: [],
     platforms: dealPlatforms(product),
     rating: null,

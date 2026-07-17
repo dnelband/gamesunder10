@@ -103,6 +103,7 @@ export function DealFilters({
       platforms: [],
       genres: [],
       minRating: null,
+      store: null,
     });
   }
 

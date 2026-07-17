@@ -43,6 +43,7 @@ export const deals = pgTable(
     imageUrl: text("image_url"),
     region: text("region"),
     sourceReleaseDate: text("source_release_date"),
+    distributionFormat: text("distribution_format").notNull().default("unknown"),
     genres: text("genres").array().notNull().default([]),
     platforms: text("platforms").array().notNull().default([]),
     rating: doublePrecision("rating"),

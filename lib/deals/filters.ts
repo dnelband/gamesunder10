@@ -10,6 +10,8 @@ export interface DealListFilters {
   platforms: string[];
   genres: string[];
   minRating: number | null;
+  /** Exact `deals.store_name` match (from /stores deep links). */
+  store: string | null;
 }
 
 function isFilterPlatform(platform: string): platform is FilterPlatform {
@@ -51,7 +53,12 @@ export function parseDealFilters(
       ? minRatingParsed
       : null;
 
-  return { q, platforms, genres, minRating };
+  const storeRaw = Array.isArray(searchParams.store)
+    ? searchParams.store[0]
+    : searchParams.store;
+  const store = storeRaw?.trim() || null;
+
+  return { q, platforms, genres, minRating, store };
 }
 
 export function countActiveFilters(filters: DealListFilters): number {
@@ -60,6 +67,7 @@ export function countActiveFilters(filters: DealListFilters): number {
   if (filters.platforms.length > 0) count += 1;
   if (filters.genres.length > 0) count += 1;
   if (filters.minRating !== null) count += 1;
+  if (filters.store) count += 1;
   return count;
 }
 
@@ -95,8 +103,23 @@ export function filtersToSearchParams(
   if (filters.minRating !== null) {
     params.set("minRating", String(filters.minRating));
   }
+  if (filters.store) {
+    params.set("store", filters.store);
+  }
   if (page > 1) {
     params.set("page", String(page));
   }
   return params;
+}
+
+/** Deep-link from /stores into the deals listing. */
+export function dealsHrefForStore(storeName: string): string {
+  const params = filtersToSearchParams({
+    q: "",
+    platforms: [],
+    genres: [],
+    minRating: null,
+    store: storeName,
+  });
+  return `/deals?${params.toString()}`;
 }

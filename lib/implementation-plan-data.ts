@@ -94,6 +94,13 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "deals table + upsert on ingestion",
         status: "done",
       },
+      {
+        id: "stale-deal-cleanup",
+        title: "Stale deal cleanup after successful source sync",
+        status: "done",
+        notes:
+          "syncSourceDeals(): upsert run IDs then DELETE WHERE source=? AND id NOT IN (...). Empty fetches never wipe. Wired into cheapshark/psn/xbox cron.",
+      },
     ],
   },
   {
@@ -131,8 +138,30 @@ export const implementationPlan: ImplementationPhase[] = [
       {
         id: "distribution-format",
         title: "Physical vs digital indicator on deals",
-        status: "planned",
-        notes: "Field + UI badge; critical for console sources (020-data-model.mdc).",
+        status: "done",
+        notes:
+          "Field + column + digital defaults for CS/PSN/Xbox. Physical badge ready. eBay physical ingest deferred until developer account approved — outside MVP for now.",
+      },
+      {
+        id: "ebay-physical",
+        title: "eBay Browse API (DE) physical games under €10",
+        status: "blocked",
+        notes:
+          "Code PoC ready; waiting on eBay Developers Program account approval. Outside MVP until then.",
+      },
+      {
+        id: "store-url-builders",
+        title: "Per-store URL builders (CheapShark stores)",
+        status: "in_progress",
+        notes:
+          "Product-first at render (resolveOfferUrl). Live product: Steam, Epic, GOG, GMG, GamersGate, Humble, Fanatical, GameBillet. Search fallback when product needs unknowable store id (WinGameStore) or no product builder yet — never DDG. Smoke: npm run smoke:store-urls.",
+      },
+      {
+        id: "store-url-observability",
+        title: "Store deal counts + link builder coverage on /stores",
+        status: "done",
+        notes:
+          "Ops page at /stores: deal counts + product|search|omit from store-registry. Linked from /status. Hit-rate via smoke:store-urls (not on page view).",
       },
       {
         id: "deal-genres",

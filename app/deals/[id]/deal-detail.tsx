@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BrandWordmark } from "@/components/brand-wordmark";
+import { resolveOfferUrl } from "@/lib/deals/resolve-offer-url";
 import { sortPlatforms } from "@/lib/format-platform";
 import type { GameOfferDetail } from "@/types/deal";
 
@@ -14,8 +15,52 @@ function discountPercent(price: number, original: number): number | null {
   return Math.round(((original - price) / original) * 100);
 }
 
+function OfferCta({
+  href,
+  storeName,
+  variant,
+}: {
+  href: string | null;
+  storeName: string;
+  variant: "primary" | "secondary";
+}) {
+  const label =
+    variant === "primary" ? `Best price · ${storeName}` : "View deal →";
+
+  if (!href) {
+    return (
+      <span
+        className={
+          variant === "primary"
+            ? "inline-flex h-12 w-full items-center justify-center rounded-md border border-stroke px-8 text-sm font-semibold text-muted sm:w-fit"
+            : "inline-flex h-9 items-center rounded-md border border-stroke px-3 text-xs font-medium text-muted"
+        }
+        title="Product link not available for this store yet"
+      >
+        {variant === "primary" ? storeName : "No product link"}
+      </span>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={
+        variant === "primary"
+          ? "inline-flex h-12 w-full items-center justify-center rounded-md bg-accent px-8 text-sm font-semibold text-fg transition-opacity duration-150 hover:opacity-90 sm:w-fit"
+          : "inline-flex h-9 items-center rounded-md border border-stroke px-3 text-xs font-medium text-fg transition-colors duration-150 hover:bg-surface-2"
+      }
+    >
+      {label}
+    </a>
+  );
+}
+
 export function GameOfferDetailView({ game }: { game: GameOfferDetail }) {
   const lead = game.offers[0];
+  const leadUrl = resolveOfferUrl(lead);
   const heroImageUrl = game.coverUrl ?? lead.imageUrl;
   const platforms = sortPlatforms(game.platforms);
   const onSale = lead.originalPriceEur > lead.priceEur;
@@ -57,6 +102,11 @@ export function GameOfferDetailView({ game }: { game: GameOfferDetail }) {
         <div className="flex min-h-0 flex-col gap-8">
           <header className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+              {game.distributionFormat === "physical" ? (
+                <span className="rounded-md bg-accent/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-accent">
+                  Physical
+                </span>
+              ) : null}
               {platforms.length > 0 ? (
                 <span>{platforms.join(" · ")}</span>
               ) : null}
@@ -109,14 +159,7 @@ export function GameOfferDetailView({ game }: { game: GameOfferDetail }) {
               ) : null}
             </div>
 
-            <a
-              href={lead.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-12 w-full items-center justify-center rounded-md bg-accent px-8 text-sm font-semibold text-fg transition-opacity duration-150 hover:opacity-90 sm:w-fit"
-            >
-              Best price · {lead.storeName}
-            </a>
+            <OfferCta href={leadUrl} storeName={lead.storeName} variant="primary" />
           </div>
 
           <div className="flex flex-col gap-3">
@@ -126,6 +169,7 @@ export function GameOfferDetailView({ game }: { game: GameOfferDetail }) {
             <ul className="divide-y divide-stroke border-y border-stroke">
               {game.offers.map((offer, index) => {
                 const offerOnSale = offer.originalPriceEur > offer.priceEur;
+                const offerUrl = resolveOfferUrl(offer);
                 return (
                   <li
                     key={offer.id}
@@ -150,14 +194,11 @@ export function GameOfferDetailView({ game }: { game: GameOfferDetail }) {
                       <span className="text-lg font-semibold tabular-nums text-price">
                         €{offer.priceEur.toFixed(2)}
                       </span>
-                      <a
-                        href={offer.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex h-9 items-center rounded-md border border-stroke px-3 text-xs font-medium text-fg transition-colors duration-150 hover:bg-surface-2"
-                      >
-                        View deal →
-                      </a>
+                      <OfferCta
+                        href={offerUrl}
+                        storeName={offer.storeName}
+                        variant="secondary"
+                      />
                     </div>
                   </li>
                 );

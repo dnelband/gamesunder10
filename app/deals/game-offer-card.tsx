@@ -44,6 +44,24 @@ export function GameOfferCard({ game }: { game: GameOffer }) {
           )}
         </Link>
 
+        {platforms.length > 0 ? (
+          <div className="pointer-events-none absolute top-0 left-0 z-10 flex max-w-[85%] flex-wrap gap-1 rounded-br-md bg-bg/75 px-2 py-1 backdrop-blur-[2px]">
+            {platforms.slice(0, 2).map((platform) => (
+              <span
+                key={platform}
+                className="text-[10px] font-semibold uppercase tracking-wide text-fg/85"
+              >
+                {platform}
+              </span>
+            ))}
+            {platforms.length > 2 ? (
+              <span className="text-[10px] font-semibold text-muted">
+                +{platforms.length - 2}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-bg/95 via-bg/55 to-transparent px-2.5 pb-2.5 pt-10">
           <div className="flex items-end justify-between gap-2">
             <span className="inline-flex items-end gap-1.5">
@@ -85,13 +103,14 @@ export function GameOfferCard({ game }: { game: GameOffer }) {
         </Link>
 
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted">
-          {platforms.length > 0 ? (
-            <span className="truncate">{platforms.slice(0, 2).join(" · ")}</span>
+          {game.distributionFormat === "physical" ? (
+            <span className="rounded bg-accent/20 px-1.5 py-0.5 font-semibold uppercase tracking-wide text-accent">
+              Physical
+            </span>
           ) : null}
-          {platforms.length > 2 ? (
-            <span>+{platforms.length - 2}</span>
+          {game.distributionFormat === "physical" ? (
+            <span aria-hidden>·</span>
           ) : null}
-          {platforms.length > 0 ? <span aria-hidden>·</span> : null}
           {game.offerCount > 1 ? (
             <span>{game.offerCount} stores</span>
           ) : (

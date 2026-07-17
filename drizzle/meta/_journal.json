@@ -57,6 +57,13 @@
       "when": 1784222059790,
       "tag": "0007_foamy_grey_gargoyle",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784300000000,
+      "tag": "0008_distribution_format",
+      "breakpoints": true
     }
   ]
 }

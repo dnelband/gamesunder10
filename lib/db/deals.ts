@@ -5,6 +5,7 @@ import {
   gte,
   ilike,
   lte,
+  notInArray,
   sql,
   type SQL,
 } from "drizzle-orm";
@@ -27,6 +28,7 @@ import type {
   NormalizedDeal,
   RatingSource,
 } from "@/types/deal";
+import type { DealSource } from "@/types/deal-source";
 
 import { db } from "./client";
 import { deals } from "./schema";
@@ -35,13 +37,16 @@ const MAX_PRICE_EUR = 10;
 
 const listingColumns = {
   id: deals.id,
+  source: deals.source,
   title: deals.title,
   storeName: deals.storeName,
+  steamAppId: deals.steamAppId,
   priceEur: deals.priceEur,
   originalPriceEur: deals.originalPriceEur,
   url: deals.url,
   imageUrl: deals.imageUrl,
   sourceReleaseDate: deals.sourceReleaseDate,
+  distributionFormat: deals.distributionFormat,
   genres: deals.genres,
   platforms: deals.platforms,
   rating: deals.rating,
@@ -59,13 +64,16 @@ export interface GameOfferListPage {
 function rowToListing(
   row: {
     id: string;
+    source: string;
     title: string;
     storeName: string;
+    steamAppId: string | null;
     priceEur: number;
     originalPriceEur: number;
     url: string;
     imageUrl: string | null;
     sourceReleaseDate: string | null;
+    distributionFormat: string;
     genres: string[] | null;
     platforms: string[] | null;
     rating: number | null;
@@ -74,13 +82,16 @@ function rowToListing(
 ): DealListing {
   return {
     id: row.id,
+    source: row.source as DealListing["source"],
     title: row.title,
     storeName: row.storeName,
+    steamAppId: row.steamAppId,
     priceEur: row.priceEur,
     originalPriceEur: row.originalPriceEur,
     url: row.url,
     imageUrl: row.imageUrl,
     sourceReleaseDate: row.sourceReleaseDate,
+    distributionFormat: row.distributionFormat as DealListing["distributionFormat"],
     genres: row.genres ?? [],
     platforms: row.platforms ?? [],
     rating: row.rating,
@@ -105,6 +116,8 @@ function rowToDeal(row: typeof deals.$inferSelect): NormalizedDeal {
     imageUrl: row.imageUrl,
     region: row.region,
     sourceReleaseDate: row.sourceReleaseDate,
+    distributionFormat:
+      row.distributionFormat as NormalizedDeal["distributionFormat"],
     genres: row.genres ?? [],
     platforms: row.platforms ?? [],
     rating: row.rating,
@@ -135,6 +148,10 @@ function buildDealFilters(filters: DealListFilters): SQL[] {
     conditions.push(gte(deals.rating, filters.minRating));
   }
 
+  if (filters.store) {
+    conditions.push(eq(deals.storeName, filters.store));
+  }
+
   return conditions;
 }
 
@@ -151,25 +168,26 @@ function familySqlCondition(family: "pc" | "console"): SQL {
 function rowToGroupingDeal(
   row: {
     id: string;
+    source: string;
     title: string;
     storeName: string;
+    steamAppId: string | null;
     priceEur: number;
     originalPriceEur: number;
     url: string;
     imageUrl: string | null;
     sourceReleaseDate: string | null;
+    distributionFormat: string;
     genres: string[] | null;
     platforms: string[] | null;
     rating: number | null;
     ratingSource: string | null;
     normalizedTitle: string;
-    steamAppId: string | null;
   },
 ): DealForGrouping {
   return {
     ...rowToListing(row),
     normalizedTitle: row.normalizedTitle,
-    steamAppId: row.steamAppId,
   };
 }
 
@@ -182,6 +200,7 @@ function buildGameOfferDetail(
   const metadata =
     sorted.find((deal) => deal.description || deal.coverUrl) ?? lead;
   const screenshots = sorted.find((deal) => deal.screenshotUrls.length > 0);
+  const formats = new Set(sorted.map((deal) => deal.distributionFormat));
 
   return {
     groupKey,
@@ -207,6 +226,8 @@ function buildGameOfferDetail(
         }
         return latest;
       }, null) ?? lead.sourceReleaseDate,
+    distributionFormat:
+      formats.size === 1 ? lead.distributionFormat : "unknown",
     minPriceEur: lead.priceEur,
     maxOriginalPriceEur: Math.max(...sorted.map((deal) => deal.originalPriceEur)),
     offers: sorted.map((deal) => rowToListing(deal)),
@@ -214,74 +235,112 @@ function buildGameOfferDetail(
   };
 }
 
-export async function upsertDeals(items: NormalizedDeal[]): Promise<number> {
+export interface SyncSourceDealsResult {
+  upserted: number;
+  /** Rows removed because they were absent from this successful run. */
+  deleted: number;
+}
+
+function dealValues(item: NormalizedDeal) {
+  return {
+    id: item.id,
+    source: item.source,
+    title: item.title,
+    normalizedTitle: item.normalizedTitle,
+    steamAppId: item.steamAppId,
+    externalStoreUid: item.externalStoreUid,
+    storeName: item.storeName,
+    priceEur: item.priceEur,
+    originalPriceEur: item.originalPriceEur,
+    discountPercent: item.discountPercent,
+    currencyOriginal: item.currencyOriginal,
+    url: item.url,
+    imageUrl: item.imageUrl,
+    region: item.region,
+    sourceReleaseDate: item.sourceReleaseDate,
+    distributionFormat: item.distributionFormat,
+    genres: item.genres,
+    platforms: item.platforms,
+    rating: item.rating,
+    ratingSource: item.ratingSource,
+    description: item.description,
+    coverUrl: item.coverUrl,
+    screenshotUrls: item.screenshotUrls,
+    fetchedAt: item.fetchedAt,
+  };
+}
+
+function dealUpdateSet(item: NormalizedDeal) {
+  return {
+    title: item.title,
+    normalizedTitle: item.normalizedTitle,
+    steamAppId: item.steamAppId,
+    externalStoreUid: item.externalStoreUid,
+    storeName: item.storeName,
+    priceEur: item.priceEur,
+    originalPriceEur: item.originalPriceEur,
+    discountPercent: item.discountPercent,
+    currencyOriginal: item.currencyOriginal,
+    url: item.url,
+    imageUrl: item.imageUrl,
+    region: item.region,
+    sourceReleaseDate: item.sourceReleaseDate,
+    distributionFormat: item.distributionFormat,
+    genres: item.genres,
+    platforms: item.platforms,
+    rating: item.rating,
+    ratingSource: item.ratingSource,
+    description: item.description,
+    coverUrl: item.coverUrl,
+    screenshotUrls: item.screenshotUrls,
+    fetchedAt: item.fetchedAt,
+  };
+}
+
+/**
+ * Upsert this run's deals, then delete any other rows for the same source.
+ * Empty runs never delete — a blank fetch must not wipe the catalog.
+ */
+export async function syncSourceDeals(
+  source: DealSource,
+  items: NormalizedDeal[],
+): Promise<SyncSourceDealsResult> {
   if (items.length === 0) {
-    return 0;
+    return { upserted: 0, deleted: 0 };
   }
 
-  for (const item of items) {
-    await db
-      .insert(deals)
-      .values({
-        id: item.id,
-        source: item.source,
-        title: item.title,
-        normalizedTitle: item.normalizedTitle,
-        steamAppId: item.steamAppId,
-        externalStoreUid: item.externalStoreUid,
-        storeName: item.storeName,
-        priceEur: item.priceEur,
-        originalPriceEur: item.originalPriceEur,
-        discountPercent: item.discountPercent,
-        currencyOriginal: item.currencyOriginal,
-        url: item.url,
-        imageUrl: item.imageUrl,
-        region: item.region,
-        sourceReleaseDate: item.sourceReleaseDate,
-        genres: item.genres,
-        platforms: item.platforms,
-        rating: item.rating,
-        ratingSource: item.ratingSource,
-        description: item.description,
-        coverUrl: item.coverUrl,
-        screenshotUrls: item.screenshotUrls,
-        fetchedAt: item.fetchedAt,
-      })
-      .onConflictDoUpdate({
-        target: deals.id,
-        set: {
-          title: item.title,
-          normalizedTitle: item.normalizedTitle,
-          steamAppId: item.steamAppId,
-          externalStoreUid: item.externalStoreUid,
-          storeName: item.storeName,
-          priceEur: item.priceEur,
-          originalPriceEur: item.originalPriceEur,
-          discountPercent: item.discountPercent,
-          currencyOriginal: item.currencyOriginal,
-          url: item.url,
-          imageUrl: item.imageUrl,
-          region: item.region,
-          sourceReleaseDate: item.sourceReleaseDate,
-          genres: item.genres,
-          platforms: item.platforms,
-          rating: item.rating,
-          ratingSource: item.ratingSource,
-          description: item.description,
-          coverUrl: item.coverUrl,
-          screenshotUrls: item.screenshotUrls,
-          fetchedAt: item.fetchedAt,
-        },
-      });
+  const mismatched = items.find((item) => item.source !== source);
+  if (mismatched) {
+    throw new Error(
+      `syncSourceDeals: deal ${mismatched.id} has source "${mismatched.source}", expected "${source}"`,
+    );
   }
 
-  return items.length;
+  const keepIds = items.map((item) => item.id);
+
+  return db.transaction(async (tx) => {
+    for (const item of items) {
+      await tx
+        .insert(deals)
+        .values(dealValues(item))
+        .onConflictDoUpdate({
+          target: deals.id,
+          set: dealUpdateSet(item),
+        });
+    }
+
+    const removed = await tx
+      .delete(deals)
+      .where(and(eq(deals.source, source), notInArray(deals.id, keepIds)))
+      .returning({ id: deals.id });
+
+    return { upserted: items.length, deleted: removed.length };
+  });
 }
 
 const groupingColumns = {
   ...listingColumns,
   normalizedTitle: deals.normalizedTitle,
-  steamAppId: deals.steamAppId,
 } as const;
 
 export async function listGameOffersPage(
@@ -290,6 +349,7 @@ export async function listGameOffersPage(
     platforms: [],
     genres: [],
     minRating: null,
+    store: null,
   },
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,

@@ -1,5 +1,10 @@
 import { CONSOLE_PLATFORMS } from "@/lib/deals/platforms";
-import type { DealListing, GameOffer, RatingSource } from "@/types/deal";
+import type {
+  DealListing,
+  DistributionFormat,
+  GameOffer,
+  RatingSource,
+} from "@/types/deal";
 
 export type PlatformFamily = "pc" | "console";
 
@@ -62,7 +67,6 @@ export function parseGroupKey(key: string): {
 
 export type DealForGrouping = DealListing & {
   normalizedTitle: string;
-  steamAppId: string | null;
 };
 
 function pickBestGenres(groupDeals: DealForGrouping[]): string[] {
@@ -98,18 +102,31 @@ function pickLatestReleaseDate(groupDeals: DealForGrouping[]): string | null {
 function toListing(deal: DealForGrouping): DealListing {
   return {
     id: deal.id,
+    source: deal.source,
     title: deal.title,
     storeName: deal.storeName,
+    steamAppId: deal.steamAppId,
     priceEur: deal.priceEur,
     originalPriceEur: deal.originalPriceEur,
     url: deal.url,
     imageUrl: deal.imageUrl,
     sourceReleaseDate: deal.sourceReleaseDate,
+    distributionFormat: deal.distributionFormat,
     genres: deal.genres,
     platforms: deal.platforms,
     rating: deal.rating,
     ratingSource: deal.ratingSource,
   };
+}
+
+function pickDistributionFormat(
+  groupDeals: DealForGrouping[],
+): DistributionFormat {
+  const formats = new Set(groupDeals.map((deal) => deal.distributionFormat));
+  if (formats.size === 1) {
+    return groupDeals[0].distributionFormat;
+  }
+  return "unknown";
 }
 
 export function groupDealsIntoOffers(deals: DealForGrouping[]): GameOffer[] {
@@ -143,6 +160,7 @@ export function groupDealsIntoOffers(deals: DealForGrouping[]): GameOffer[] {
       rating,
       ratingSource,
       sourceReleaseDate: pickLatestReleaseDate(sorted),
+      distributionFormat: pickDistributionFormat(sorted),
       minPriceEur: lead.priceEur,
       maxOriginalPriceEur: Math.max(
         ...sorted.map((deal) => deal.originalPriceEur),

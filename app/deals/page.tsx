@@ -40,6 +40,7 @@ function resultsKey(filters: DealListFilters, page: number): string {
     filters.platforms.join(","),
     filters.genres.join(","),
     filters.minRating ?? "",
+    filters.store ?? "",
     page,
   ].join("|");
 }
@@ -99,6 +100,7 @@ async function DealsSummary({
   return (
     <>
       {total} game{total === 1 ? "" : "s"}
+      {filters.store ? ` · ${filters.store}` : ""}
       {totalPages > 1 ? ` · page ${page} of ${totalPages}` : ""}
     </>
   );
