@@ -66,7 +66,9 @@ export const implementationPlan: ImplementationPhase[] = [
       {
         id: "xbox",
         title: "Xbox scraper",
-        status: "planned",
+        status: "in_progress",
+        notes:
+          "Emerald GET browse (de-DE/EUR). Response has channels (IDs) + productSummaries (full data). No deals-only channel — scan full catalog (~340×50, ~2 min) and filter €0.01–10 games on Xbox Series X|S / Xbox One. /api/cron/xbox daily 07:00 UTC.",
       },
       {
         id: "eshop",
@@ -78,14 +80,14 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "Cron routes per source (CRON_SECRET)",
         status: "in_progress",
         notes:
-          "PSN on Vercel daily (Hobby). CheapShark local only (429 from cloud). ITAD/Xbox/eShop pending.",
+          "PSN + Xbox on Vercel daily (Hobby). CheapShark local only (429 from cloud). ITAD/eShop pending.",
       },
       {
         id: "cron-orchestrator",
         title: "Cron scripts: remote + local",
         status: "done",
         notes:
-          "npm run cron → REMOTE_SOURCES (psn) via CRON_BASE_URL. npm run cron-local → LOCAL_SOURCES (cheapshark) via localhost.",
+          "npm run cron → REMOTE_SOURCES (psn, xbox) via CRON_BASE_URL. npm run cron-local → LOCAL_SOURCES (cheapshark) via localhost.",
       },
       {
         id: "deals-table",
@@ -111,6 +113,13 @@ export const implementationPlan: ImplementationPhase[] = [
         status: "done",
         notes:
           "Phases 1–3 + GIN indexes + 090-performance.mdc. Nested Suspense, next/image, Link prefetch, DealListing slim SELECT, DISTINCT unnest filter options.",
+      },
+      {
+        id: "game-grouping",
+        title: "Group deals by game (platform-scoped, cheapest lead)",
+        status: "done",
+        notes:
+          "Listing shows GameOffer cards; detail at /deals/[groupKey] with all store offers. PC and console kept separate.",
       },
       {
         id: "distribution-format",

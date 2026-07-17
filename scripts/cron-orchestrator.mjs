@@ -7,7 +7,7 @@ config({ path: ".env.local" });
  * Local (localhost): sources that rate-limit Vercel (CheapShark).
  * Keep in sync with the cron route files as new sources land.
  */
-const REMOTE_SOURCES = ["psn"];
+const REMOTE_SOURCES = ["psn", "xbox"];
 const LOCAL_SOURCES = ["cheapshark"];
 
 function readEnv(name) {

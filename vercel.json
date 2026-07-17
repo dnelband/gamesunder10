@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/psn",
       "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/xbox",
+      "schedule": "0 7 * * *"
     }
   ]
 }

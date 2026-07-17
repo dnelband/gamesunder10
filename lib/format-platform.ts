@@ -1,4 +1,12 @@
-const PLATFORM_ORDER = ["PS5", "PS4", "PC", "Xbox", "Switch"] as const;
+const PLATFORM_ORDER = [
+  "PS5",
+  "PS4",
+  "Xbox Series X|S",
+  "Xbox One",
+  "PC",
+  "Xbox",
+  "Switch",
+] as const;
 
 export function sortPlatforms(platforms: string[]): string[] {
   return [...platforms].sort((a, b) => {

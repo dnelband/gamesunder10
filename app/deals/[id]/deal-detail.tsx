@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -8,7 +7,9 @@ import {
   getScoreBadgeClass,
 } from "@/lib/format-rating";
 import { sortPlatforms } from "@/lib/format-platform";
-import type { NormalizedDeal } from "@/types/deal";
+import type { GameOfferDetail } from "@/types/deal";
+
+import { DealImage } from "../deal-image";
 
 const overlayClass =
   "bg-white/90 shadow-sm backdrop-blur-sm dark:bg-zinc-950/90";
@@ -26,12 +27,13 @@ function MetaItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function DealDetail({ deal }: { deal: NormalizedDeal }) {
-  const heroImageUrl = deal.coverUrl ?? deal.imageUrl;
-  const platforms = sortPlatforms(deal.platforms);
-  const onSale = deal.originalPriceEur > deal.priceEur;
+export function GameOfferDetailView({ game }: { game: GameOfferDetail }) {
+  const lead = game.offers[0];
+  const heroImageUrl = game.coverUrl ?? lead.imageUrl;
+  const platforms = sortPlatforms(game.platforms);
+  const onSale = lead.originalPriceEur > lead.priceEur;
   const savingsEur = onSale
-    ? Math.round((deal.originalPriceEur - deal.priceEur) * 100) / 100
+    ? Math.round((lead.originalPriceEur - lead.priceEur) * 100) / 100
     : 0;
 
   return (
@@ -48,13 +50,11 @@ export function DealDetail({ deal }: { deal: NormalizedDeal }) {
         <div className="grid lg:grid-cols-[minmax(0,340px)_1fr]">
           <div className="relative aspect-[3/4] bg-zinc-100 dark:bg-zinc-900 lg:min-h-full">
             {heroImageUrl ? (
-              <Image
+              <DealImage
                 src={heroImageUrl}
                 alt=""
                 fill
                 priority
-                sizes="(max-width: 1024px) 100vw, 340px"
-                className="object-cover"
               />
             ) : (
               <div className="flex h-full min-h-72 items-center justify-center text-sm text-zinc-500">
@@ -79,20 +79,20 @@ export function DealDetail({ deal }: { deal: NormalizedDeal }) {
               className={`absolute bottom-3 left-3 inline-flex items-baseline gap-2 rounded-full px-3 py-1.5 ${overlayClass}`}
             >
               <span className="text-2xl font-bold leading-none tracking-tight">
-                €{deal.priceEur.toFixed(2)}
+                €{game.minPriceEur.toFixed(2)}
               </span>
               {onSale ? (
                 <span className="text-sm text-zinc-500 line-through">
-                  €{deal.originalPriceEur.toFixed(2)}
+                  €{lead.originalPriceEur.toFixed(2)}
                 </span>
               ) : null}
             </div>
 
-            {deal.rating !== null && deal.ratingSource ? (
+            {game.rating !== null && game.ratingSource ? (
               <div
-                className={`absolute right-3 bottom-3 flex min-w-11 items-center justify-center rounded-md px-2.5 py-2 text-xl font-bold leading-none shadow-sm ${getScoreBadgeClass(deal.rating, deal.ratingSource)}`}
+                className={`absolute right-3 bottom-3 flex min-w-11 items-center justify-center rounded-md px-2.5 py-2 text-xl font-bold leading-none shadow-sm ${getScoreBadgeClass(game.rating, game.ratingSource)}`}
               >
-                {formatRatingBadgeValue(deal.rating, deal.ratingSource)}
+                {formatRatingBadgeValue(game.rating, game.ratingSource)}
               </div>
             ) : null}
           </div>
@@ -100,41 +100,35 @@ export function DealDetail({ deal }: { deal: NormalizedDeal }) {
           <div className="flex flex-col gap-6 p-6 sm:p-8">
             <header className="flex flex-col gap-4">
               <div className="flex flex-wrap items-center gap-2">
-                {onSale && deal.discountPercent > 0 ? (
+                {onSale && lead.originalPriceEur > lead.priceEur ? (
                   <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                    −{deal.discountPercent}%
+                    Save €{savingsEur.toFixed(2)}
                   </span>
                 ) : null}
-                {onSale && savingsEur > 0 ? (
-                  <span className="text-xs text-zinc-500">
-                    Save €{savingsEur.toFixed(2)}
+                {game.offerCount > 1 ? (
+                  <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+                    {game.offerCount} stores
                   </span>
                 ) : null}
               </div>
 
               <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-                {deal.title}
+                {game.title}
               </h1>
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-500">
-                <span>{deal.storeName}</span>
-                {deal.region ? (
+                <span>From {lead.storeName}</span>
+                {game.sourceReleaseDate ? (
                   <>
                     <span aria-hidden>·</span>
-                    <span>{deal.region}</span>
-                  </>
-                ) : null}
-                {deal.sourceReleaseDate ? (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span>{deal.sourceReleaseDate.slice(0, 4)}</span>
+                    <span>{game.sourceReleaseDate.slice(0, 4)}</span>
                   </>
                 ) : null}
               </div>
 
-              {deal.genres.length > 0 ? (
+              {game.genres.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
-                  {deal.genres.map((genre) => (
+                  {game.genres.map((genre) => (
                     <span
                       key={genre}
                       className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
@@ -148,88 +142,129 @@ export function DealDetail({ deal }: { deal: NormalizedDeal }) {
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <a
-                href={deal.url}
+                href={lead.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex h-12 items-center justify-center rounded-full bg-foreground px-8 text-sm font-semibold text-background transition-opacity hover:opacity-90"
               >
-                View on {deal.storeName}
+                Best price · {lead.storeName}
               </a>
-              {deal.rating !== null && deal.ratingSource ? (
+              {game.rating !== null && game.ratingSource ? (
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
                   <span className="font-medium text-foreground">
-                    {formatRatingLabel(deal.rating, deal.ratingSource)}
+                    {formatRatingLabel(game.rating, game.ratingSource)}
                   </span>
                   <span className="text-zinc-500">
                     {" "}
-                    · {formatRatingSourceLabel(deal.ratingSource)}
+                    · {formatRatingSourceLabel(game.ratingSource)}
                   </span>
                 </p>
               ) : null}
             </div>
 
             <dl className="grid grid-cols-2 gap-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:grid-cols-4 dark:border-zinc-800 dark:bg-zinc-900/50">
-              <MetaItem label="Price" value={`€${deal.priceEur.toFixed(2)}`} />
+              <MetaItem
+                label="Best price"
+                value={`€${game.minPriceEur.toFixed(2)}`}
+              />
               {onSale ? (
                 <MetaItem
                   label="Was"
-                  value={`€${deal.originalPriceEur.toFixed(2)}`}
+                  value={`€${lead.originalPriceEur.toFixed(2)}`}
                 />
               ) : (
-                <MetaItem label="Store" value={deal.storeName} />
+                <MetaItem label="Store" value={lead.storeName} />
               )}
               {platforms.length > 0 ? (
                 <MetaItem label="Platform" value={platforms.join(", ")} />
               ) : (
-                <MetaItem label="Source" value={deal.source.toUpperCase()} />
+                <MetaItem label="Offers" value={String(game.offerCount)} />
               )}
-              {deal.sourceReleaseDate ? (
-                <MetaItem label="Release" value={deal.sourceReleaseDate} />
-              ) : deal.region ? (
-                <MetaItem label="Region" value={deal.region} />
+              {game.sourceReleaseDate ? (
+                <MetaItem label="Release" value={game.sourceReleaseDate} />
               ) : (
                 <MetaItem
-                  label="Currency"
-                  value={deal.currencyOriginal}
+                  label="Stores"
+                  value={String(game.offerCount)}
                 />
               )}
             </dl>
 
             <section className="flex flex-col gap-3">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+                Where to buy
+              </h2>
+              <ul className="divide-y divide-zinc-200 overflow-hidden rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+                {game.offers.map((offer, index) => {
+                  const offerOnSale = offer.originalPriceEur > offer.priceEur;
+                  return (
+                    <li
+                      key={offer.id}
+                      className="flex flex-col gap-3 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:bg-zinc-950"
+                    >
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-medium">
+                          {offer.storeName}
+                          {index === 0 ? (
+                            <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                              Cheapest
+                            </span>
+                          ) : null}
+                        </span>
+                        {offerOnSale ? (
+                          <span className="text-xs text-zinc-500">
+                            Was €{offer.originalPriceEur.toFixed(2)}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg font-semibold tabular-nums">
+                          €{offer.priceEur.toFixed(2)}
+                        </span>
+                        <a
+                          href={offer.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-9 items-center rounded-full border border-zinc-200 px-4 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                        >
+                          View deal →
+                        </a>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+
+            <section className="flex flex-col gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
                 About
               </h2>
-              {deal.description ? (
+              {game.description ? (
                 <p className="max-w-prose text-base leading-7 text-zinc-700 dark:text-zinc-300">
-                  {deal.description}
+                  {game.description}
                 </p>
               ) : (
                 <p className="text-sm text-zinc-500 italic">
-                  No description available for this listing.
+                  No description available for this game.
                 </p>
               )}
             </section>
           </div>
         </div>
 
-        {deal.screenshotUrls.length > 0 ? (
+        {game.screenshotUrls.length > 0 ? (
           <section className="border-t border-zinc-200 p-6 sm:p-8 dark:border-zinc-800">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500">
               Screenshots
             </h2>
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {deal.screenshotUrls.slice(0, 6).map((url) => (
+              {game.screenshotUrls.slice(0, 6).map((url) => (
                 <li
                   key={url}
                   className="relative aspect-video overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900"
                 >
-                  <Image
-                    src={url}
-                    alt=""
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover"
-                  />
+                  <DealImage src={url} alt="" fill />
                 </li>
               ))}
             </ul>

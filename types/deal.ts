@@ -46,3 +46,37 @@ export type DealListing = Pick<
   | "rating"
   | "ratingSource"
 >;
+
+/** One game on a platform family (PC or console), with store offers grouped. */
+export interface GameOffer {
+  groupKey: string;
+  title: string;
+  imageUrl: string | null;
+  genres: string[];
+  platforms: string[];
+  rating: number | null;
+  ratingSource: RatingSource | null;
+  sourceReleaseDate: string | null;
+  minPriceEur: number;
+  maxOriginalPriceEur: number;
+  offers: DealListing[];
+  offerCount: number;
+}
+
+/** Game detail page — metadata plus all store offers, cheapest first. */
+export interface GameOfferDetail {
+  groupKey: string;
+  title: string;
+  platforms: string[];
+  genres: string[];
+  rating: number | null;
+  ratingSource: RatingSource | null;
+  description: string | null;
+  coverUrl: string | null;
+  screenshotUrls: string[];
+  sourceReleaseDate: string | null;
+  minPriceEur: number;
+  maxOriginalPriceEur: number;
+  offers: DealListing[];
+  offerCount: number;
+}

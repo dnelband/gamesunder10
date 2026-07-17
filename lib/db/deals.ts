@@ -15,8 +15,17 @@ import {
   DEFAULT_PAGE_SIZE,
   type DealListFilters,
 } from "@/lib/deals/filters";
+import {
+  groupDealsIntoOffers,
+  isConsoleFamily,
+  parseGroupKey,
+  type DealForGrouping,
+} from "@/lib/deals/grouping";
+import { CONSOLE_PLATFORMS } from "@/lib/deals/platforms";
 import type {
   DealListing,
+  GameOffer,
+  GameOfferDetail,
   NormalizedDeal,
   RatingSource,
 } from "@/types/deal";
@@ -43,6 +52,14 @@ const listingColumns = {
 
 export interface DealListPage {
   deals: DealListing[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface GameOfferListPage {
+  games: GameOffer[];
   total: number;
   page: number;
   pageSize: number;
@@ -129,6 +146,82 @@ function buildDealFilters(filters: DealListFilters): SQL[] {
   }
 
   return conditions;
+}
+
+function familySqlCondition(family: "pc" | "console"): SQL {
+  if (family === "console") {
+    return arrayOverlaps(deals.platforms, [...CONSOLE_PLATFORMS]);
+  }
+  return sql`NOT (${deals.platforms} && ARRAY[${sql.join(
+    CONSOLE_PLATFORMS.map((platform) => sql`${platform}`),
+    sql`, `,
+  )}]::text[])`;
+}
+
+function rowToGroupingDeal(
+  row: {
+    id: string;
+    title: string;
+    storeName: string;
+    priceEur: number;
+    originalPriceEur: number;
+    url: string;
+    imageUrl: string | null;
+    sourceReleaseDate: string | null;
+    genres: string[] | null;
+    platforms: string[] | null;
+    rating: number | null;
+    ratingSource: string | null;
+    normalizedTitle: string;
+    steamAppId: string | null;
+  },
+): DealForGrouping {
+  return {
+    ...rowToListing(row),
+    normalizedTitle: row.normalizedTitle,
+    steamAppId: row.steamAppId,
+  };
+}
+
+function buildGameOfferDetail(
+  groupKey: string,
+  rows: NormalizedDeal[],
+): GameOfferDetail {
+  const sorted = [...rows].sort((a, b) => a.priceEur - b.priceEur);
+  const lead = sorted[0];
+  const metadata =
+    sorted.find((deal) => deal.description || deal.coverUrl) ?? lead;
+  const screenshots = sorted.find((deal) => deal.screenshotUrls.length > 0);
+
+  return {
+    groupKey,
+    title: lead.title,
+    platforms: [...new Set(sorted.flatMap((deal) => deal.platforms))].sort(),
+    genres:
+      sorted.find((deal) => deal.genres.length > 0)?.genres ?? lead.genres,
+    rating:
+      sorted.find((deal) => deal.rating !== null)?.rating ?? lead.rating,
+    ratingSource:
+      sorted.find((deal) => deal.ratingSource)?.ratingSource ??
+      lead.ratingSource,
+    description: metadata.description,
+    coverUrl: metadata.coverUrl ?? metadata.imageUrl,
+    screenshotUrls: screenshots?.screenshotUrls ?? [],
+    sourceReleaseDate:
+      sorted.reduce<string | null>((latest, deal) => {
+        if (!deal.sourceReleaseDate) {
+          return latest;
+        }
+        if (!latest || deal.sourceReleaseDate > latest) {
+          return deal.sourceReleaseDate;
+        }
+        return latest;
+      }, null) ?? lead.sourceReleaseDate,
+    minPriceEur: lead.priceEur,
+    maxOriginalPriceEur: Math.max(...sorted.map((deal) => deal.originalPriceEur)),
+    offers: sorted.map((deal) => rowToListing(deal)),
+    offerCount: sorted.length,
+  };
 }
 
 export async function upsertDeals(items: NormalizedDeal[]): Promise<number> {
@@ -257,6 +350,46 @@ export async function listDealsPage(
   };
 }
 
+const groupingColumns = {
+  ...listingColumns,
+  normalizedTitle: deals.normalizedTitle,
+  steamAppId: deals.steamAppId,
+} as const;
+
+export async function listGameOffersPage(
+  filters: DealListFilters = {
+    q: "",
+    platforms: [],
+    genres: [],
+    minRating: null,
+  },
+  page = 1,
+  pageSize = DEFAULT_PAGE_SIZE,
+): Promise<GameOfferListPage> {
+  const safePageSize = Math.max(1, Math.min(pageSize, 100));
+  const where = and(...buildDealFilters(filters));
+  const requestedPage = Math.max(1, page);
+
+  const rows = await db
+    .select(groupingColumns)
+    .from(deals)
+    .where(where);
+
+  const allGames = groupDealsIntoOffers(rows.map(rowToGroupingDeal));
+  const total = allGames.length;
+  const totalPages = total === 0 ? 1 : Math.ceil(total / safePageSize);
+  const safePage = Math.min(requestedPage, totalPages);
+  const offset = (safePage - 1) * safePageSize;
+
+  return {
+    games: allGames.slice(offset, offset + safePageSize),
+    total,
+    page: safePage,
+    pageSize: safePageSize,
+    totalPages,
+  };
+}
+
 export async function listDealFilterOptions(): Promise<{
   platforms: string[];
   genres: string[];
@@ -286,4 +419,50 @@ export async function getDealById(id: string): Promise<NormalizedDeal | null> {
   const rows = await db.select().from(deals).where(eq(deals.id, id)).limit(1);
   const row = rows[0];
   return row ? rowToDeal(row) : null;
+}
+
+export async function getGameOfferByGroupKey(
+  groupKey: string,
+): Promise<GameOfferDetail | null> {
+  const parsed = parseGroupKey(groupKey);
+  if (!parsed) {
+    return null;
+  }
+
+  const conditions: SQL[] = [
+    lte(deals.priceEur, MAX_PRICE_EUR),
+    familySqlCondition(parsed.family),
+  ];
+
+  if (parsed.steamAppId) {
+    conditions.push(eq(deals.steamAppId, parsed.steamAppId));
+  } else if (parsed.normalizedTitle) {
+    conditions.push(eq(deals.normalizedTitle, parsed.normalizedTitle));
+    conditions.push(sql`${deals.steamAppId} IS NULL`);
+  } else {
+    return null;
+  }
+
+  const rows = await db
+    .select()
+    .from(deals)
+    .where(and(...conditions));
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const normalized = rows.map(rowToDeal);
+  const expectedFamily = parsed.family;
+  const matching = normalized.filter((deal) =>
+    expectedFamily === "console"
+      ? isConsoleFamily(deal.platforms)
+      : !isConsoleFamily(deal.platforms),
+  );
+
+  if (matching.length === 0) {
+    return null;
+  }
+
+  return buildGameOfferDetail(groupKey, matching);
 }

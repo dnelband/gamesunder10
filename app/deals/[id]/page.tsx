@@ -2,9 +2,10 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { getCachedDealById } from "@/lib/db/deals-cached";
+import { getCachedGameOfferByGroupKey } from "@/lib/db/deals-cached";
+import { parseGroupKey } from "@/lib/deals/grouping";
 
-import { DealDetail } from "./deal-detail";
+import { GameOfferDetailView } from "./deal-detail";
 
 function DealDetailFallback() {
   return (
@@ -26,11 +27,17 @@ export default function DealDetailPage(props: PageProps<"/deals/[id]">) {
 async function DealDetailContent(props: PageProps<"/deals/[id]">) {
   await connection();
   const { id } = await props.params;
-  const deal = await getCachedDealById(id);
+  const groupKey = decodeURIComponent(id);
 
-  if (!deal) {
+  if (!parseGroupKey(groupKey)) {
     notFound();
   }
 
-  return <DealDetail deal={deal} />;
+  const game = await getCachedGameOfferByGroupKey(groupKey);
+
+  if (!game) {
+    notFound();
+  }
+
+  return <GameOfferDetailView game={game} />;
 }

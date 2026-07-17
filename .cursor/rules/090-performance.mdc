@@ -41,10 +41,13 @@ states, and images.
 
 ## Images
 
-- Use `next/image` with explicit `sizes` for the responsive grid.
-- Listing: default lazy. Detail hero: `priority`.
-- Add new storefront CDNs to `images.remotePatterns` in `next.config.ts`
-  when a source introduces unknown hosts.
+- **Storefront deal art** (listing + detail) uses `DealImage` (`app/deals/deal-image.tsx`)
+  — native `<img>` with lazy loading. URLs come from cron ingestion across many
+  storefront CDNs; do not maintain a `remotePatterns` allowlist per source.
+- Fixed aspect-ratio containers prevent CLS; detail hero uses `priority` / `eager`.
+- Reserve `next/image` for assets we control (local or a single known CDN). If
+  we need optimization for storefront art later, proxy at ingestion or via a
+  dedicated route — not an ever-growing hostname list.
 
 ## Before merging perf-sensitive changes
 

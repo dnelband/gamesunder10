@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import {
   getCachedDealFilterOptions,
-  getCachedDealsPage,
+  getCachedGameOffersPage,
 } from "@/lib/db/deals-cached";
 import {
   parseDealFilters,
@@ -11,7 +11,7 @@ import {
   type DealListFilters,
 } from "@/lib/deals/filters";
 
-import { DealCard } from "./deal-card";
+import { GameOfferCard } from "./game-offer-card";
 import { DealPagination } from "./deal-pagination";
 import {
   DealFiltersSkeleton,
@@ -44,8 +44,8 @@ export default function DealsPage(props: PageProps<"/deals">) {
       <header className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Deals under €10</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Sorted by original price (highest first), then release date (newest
-          first).
+          Grouped by game (cheapest store first). Sorted by original price
+          (highest first), then release date (newest first).
         </p>
       </header>
 
@@ -86,28 +86,28 @@ async function DealsResults({
   filters: DealListFilters;
   page: number;
 }) {
-  const result = await getCachedDealsPage(filters, requestedPage);
-  const { deals, total, page, pageSize, totalPages } = result;
+  const result = await getCachedGameOffersPage(filters, requestedPage);
+  const { games, total, page, pageSize, totalPages } = result;
 
   return (
     <>
       <p className="mb-8 text-sm text-zinc-500">
-        {total} deal{total === 1 ? "" : "s"}
+        {total} game{total === 1 ? "" : "s"}
         {totalPages > 1 ? ` · page ${page} of ${totalPages}` : ""}
       </p>
 
-      {deals.length === 0 ? (
+      {games.length === 0 ? (
         <p className="rounded-lg border border-dashed border-zinc-300 px-4 py-8 text-center text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-          No deals match these filters. Try clearing filters, or run ingestion:{" "}
+          No games match these filters. Try clearing filters, or run ingestion:{" "}
           <code className="font-mono text-sm">pnpm run cron</code> /{" "}
           <code className="font-mono text-sm">pnpm run cron-local</code>
         </p>
       ) : (
         <div className="flex flex-col gap-8">
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-            {deals.map((deal) => (
-              <li key={deal.id}>
-                <DealCard deal={deal} />
+            {games.map((game) => (
+              <li key={game.groupKey}>
+                <GameOfferCard game={game} />
               </li>
             ))}
           </ul>

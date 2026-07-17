@@ -1,3 +1,11 @@
+import {
+  CONSOLE_PLATFORMS,
+  FILTER_PLATFORMS,
+  type FilterPlatform,
+} from "@/lib/deals/platforms";
+
+export { FILTER_PLATFORMS };
+
 export interface DealListFilters {
   q: string;
   platforms: string[];
@@ -5,14 +13,16 @@ export interface DealListFilters {
   minRating: number | null;
 }
 
-export const FILTER_PLATFORMS = ["PS5", "PS4", "PC"] as const;
-
 export const EMPTY_DEAL_FILTERS: DealListFilters = {
   q: "",
   platforms: [],
   genres: [],
   minRating: null,
 };
+
+function isFilterPlatform(platform: string): platform is FilterPlatform {
+  return (FILTER_PLATFORMS as readonly string[]).includes(platform);
+}
 
 function asStringArray(value: string | string[] | undefined): string[] {
   if (!value) {
@@ -34,9 +44,7 @@ export function parseDealFilters(
   const qRaw = searchParams.q;
   const q = (Array.isArray(qRaw) ? qRaw[0] : qRaw)?.trim() ?? "";
 
-  const platforms = asStringArray(searchParams.platform).filter((platform) =>
-    (FILTER_PLATFORMS as readonly string[]).includes(platform),
-  );
+  const platforms = asStringArray(searchParams.platform).filter(isFilterPlatform);
 
   const genres = asStringArray(searchParams.genre);
 

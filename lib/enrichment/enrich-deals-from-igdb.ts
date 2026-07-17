@@ -1,4 +1,5 @@
 import { getIgdbPsnExternalGameSource } from "@/lib/sources/psn/config";
+import { getIgdbXboxExternalGameSource } from "@/lib/sources/xbox/config";
 import type { NormalizedDeal } from "@/types/deal";
 import type { GameMetadata } from "@/types/enrichment";
 
@@ -136,6 +137,14 @@ export async function enrichDealsFromIgdb(
     ),
   ];
 
+  const xboxUidsNeedingLookup = [
+    ...new Set(
+      dealsNeedingEnrichment
+        .filter((deal) => deal.source === "xbox" && deal.externalStoreUid)
+        .map((deal) => deal.externalStoreUid as string),
+    ),
+  ];
+
   const metadataBySteamId: Record<string, GameMetadata | null> = {};
   for (const batch of chunk(steamIdsNeedingLookup, IGDB_BATCH_SIZE)) {
     Object.assign(
@@ -151,6 +160,17 @@ export async function enrichDealsFromIgdb(
       await fetchGameMetadataBatchFromExternalStore(
         batch,
         getIgdbPsnExternalGameSource(),
+      ),
+    );
+  }
+
+  const metadataByXboxUid: Record<string, GameMetadata | null> = {};
+  for (const batch of chunk(xboxUidsNeedingLookup, IGDB_BATCH_SIZE)) {
+    Object.assign(
+      metadataByXboxUid,
+      await fetchGameMetadataBatchFromExternalStore(
+        batch,
+        getIgdbXboxExternalGameSource(),
       ),
     );
   }
@@ -174,6 +194,13 @@ export async function enrichDealsFromIgdb(
         keys.push(productId);
       }
       return mergeIgdbMetadata(deal, firstMatchingMetadata(keys, metadataByPsnUid));
+    }
+
+    if (deal.source === "xbox" && deal.externalStoreUid) {
+      return mergeIgdbMetadata(
+        deal,
+        metadataByXboxUid[deal.externalStoreUid],
+      );
     }
 
     return deal;

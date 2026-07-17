@@ -5,10 +5,14 @@ import type { NormalizedDeal } from "@/types/deal";
 
 import {
   getDealById,
+  getGameOfferByGroupKey,
   listDealFilterOptions,
   listDealsPage,
+  listGameOffersPage,
   type DealListPage,
+  type GameOfferListPage,
 } from "./deals";
+import type { GameOfferDetail } from "@/types/deal";
 
 export async function getCachedDealsPage(
   filters: DealListFilters,
@@ -19,6 +23,17 @@ export async function getCachedDealsPage(
   cacheTag("deals");
   cacheLife("hours");
   return listDealsPage(filters, page, pageSize);
+}
+
+export async function getCachedGameOffersPage(
+  filters: DealListFilters,
+  page: number,
+  pageSize?: number,
+): Promise<GameOfferListPage> {
+  "use cache";
+  cacheTag("deals");
+  cacheLife("hours");
+  return listGameOffersPage(filters, page, pageSize);
 }
 
 export async function getCachedDealFilterOptions(): Promise<{
@@ -38,4 +53,13 @@ export async function getCachedDealById(
   cacheTag("deals");
   cacheLife("hours");
   return getDealById(id);
+}
+
+export async function getCachedGameOfferByGroupKey(
+  groupKey: string,
+): Promise<GameOfferDetail | null> {
+  "use cache";
+  cacheTag("deals");
+  cacheLife("hours");
+  return getGameOfferByGroupKey(groupKey);
 }
