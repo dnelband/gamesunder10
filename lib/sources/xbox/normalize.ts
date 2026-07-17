@@ -95,7 +95,7 @@ export function normalizeXboxProduct(
       originalPriceEur > 0 ? originalPriceEur : priceEur,
     discountPercent,
     currencyOriginal: "EUR",
-    url: buildXboxStoreUrl(product.productId),
+    url: buildXboxStoreUrl(product.title, product.productId),
     imageUrl,
     region: "DE",
     sourceReleaseDate: product.releaseDate ?? null,

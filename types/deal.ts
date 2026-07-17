@@ -42,6 +42,7 @@ export type DealListing = Pick<
   | "title"
   | "storeName"
   | "steamAppId"
+  | "externalStoreUid"
   | "priceEur"
   | "originalPriceEur"
   | "url"

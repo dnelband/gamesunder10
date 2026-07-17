@@ -106,6 +106,7 @@ function toListing(deal: DealForGrouping): DealListing {
     title: deal.title,
     storeName: deal.storeName,
     steamAppId: deal.steamAppId,
+    externalStoreUid: deal.externalStoreUid,
     priceEur: deal.priceEur,
     originalPriceEur: deal.originalPriceEur,
     url: deal.url,

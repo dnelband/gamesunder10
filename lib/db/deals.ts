@@ -41,6 +41,7 @@ const listingColumns = {
   title: deals.title,
   storeName: deals.storeName,
   steamAppId: deals.steamAppId,
+  externalStoreUid: deals.externalStoreUid,
   priceEur: deals.priceEur,
   originalPriceEur: deals.originalPriceEur,
   url: deals.url,
@@ -68,6 +69,7 @@ function rowToListing(
     title: string;
     storeName: string;
     steamAppId: string | null;
+    externalStoreUid: string | null;
     priceEur: number;
     originalPriceEur: number;
     url: string;
@@ -86,6 +88,7 @@ function rowToListing(
     title: row.title,
     storeName: row.storeName,
     steamAppId: row.steamAppId,
+    externalStoreUid: row.externalStoreUid,
     priceEur: row.priceEur,
     originalPriceEur: row.originalPriceEur,
     url: row.url,
@@ -172,6 +175,7 @@ function rowToGroupingDeal(
     title: string;
     storeName: string;
     steamAppId: string | null;
+    externalStoreUid: string | null;
     priceEur: number;
     originalPriceEur: number;
     url: string;

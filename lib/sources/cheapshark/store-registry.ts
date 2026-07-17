@@ -100,7 +100,7 @@ export function linkBuilderStatusForStore(input: {
     return {
       kind: "product",
       label: "product",
-      detail: "Xbox catalog product id",
+      detail: "Xbox /games/store/{title-slug}/{productId}",
     };
   }
   if (input.source === "ebay") {
