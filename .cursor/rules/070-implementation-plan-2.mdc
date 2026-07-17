@@ -1,13 +1,20 @@
 ---
-description: The /status dashboard — source health + implementation plan, replaces manual MD tracking
+description: The /admin ops area — source health + implementation plan, replaces manual MD tracking
 alwaysApply: true
 ---
 
-# Status Dashboard (`/status`)
+# Admin ops (`/admin`)
 
 There is no `IMPLEMENTATION_PLAN.md`. Both source health and implementation
-progress live in the app itself, rendered at `app/status/page.tsx`, backed
-by two different kinds of data with two different owners:
+progress live in the app itself under `/admin`:
+
+- `/admin` — lightweight dashboard (links + plan counts)
+- `/admin/status` — source health + implementation checklist
+- `/admin/stores` — deal counts + link-builder coverage
+
+`/status` and `/stores` redirect to the admin paths. Do not link admin from
+public nav. No auth for now (pages expose no secrets); `admin-auth` is a
+post-MVP task in `implementation-plan-data.ts`.
 
 ## Source Health — automatic, written by the cron jobs themselves
 
@@ -38,17 +45,14 @@ by two different kinds of data with two different owners:
 - Don't let this drift from reality. If you're not sure whether something
   actually works, mark it `blocked` or add a note saying what's unverified
   rather than marking it `done` optimistically.
+- MVP vs post-MVP: keep shipped MVP tasks under their phases as `done`. Put
+  deferred work (eShop, ITAD, eBay, remaining store URLs, affiliates, live FX,
+  admin auth) in the `post-mvp` phase.
 
-## The dashboard route itself
+## The status route itself
 
-- `app/status/page.tsx`: Server Component, queries `source_health` directly
-  (no caching — this must always reflect live state, so don't wrap it in
-  `use cache`) and imports `implementation-plan-data.ts` statically.
-- Two sections: a source health table (status badge, last success/failure,
-  last error message, consecutive failure count) and the implementation plan
-  as grouped checklists.
-- This route is unauthenticated for now since it's a personal project — but
-  don't link it from any public nav, and revisit access control before any
-  public deploy (simple shared-secret header check would be enough, matching
-  the pattern already used for cron routes in `050-nextjs-routes.mdc`).
-
+- `app/admin/status/page.tsx`: Server Component, queries `source_health`
+  directly (no caching — this must always reflect live state, so don't wrap it
+  in `use cache`) and imports `implementation-plan-data.ts` statically.
+- Two main sections: source health table and the implementation plan as
+  grouped checklists (MVP vs post-MVP).

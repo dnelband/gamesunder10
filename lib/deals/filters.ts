@@ -10,7 +10,7 @@ export interface DealListFilters {
   platforms: string[];
   genres: string[];
   minRating: number | null;
-  /** Exact `deals.store_name` match (from /stores deep links). */
+  /** Exact `deals.store_name` match (from /admin/stores deep links). */
   store: string | null;
 }
 
@@ -112,7 +112,7 @@ export function filtersToSearchParams(
   return params;
 }
 
-/** Deep-link from /stores into the deals listing. */
+/** Deep-link from /admin/stores into the deals listing. */
 export function dealsHrefForStore(storeName: string): string {
   const params = filtersToSearchParams({
     q: "",

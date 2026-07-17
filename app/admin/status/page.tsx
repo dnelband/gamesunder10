@@ -55,12 +55,10 @@ function mergeSourceRows(rows: SourceHealthRow[]) {
   });
 }
 
-export default function StatusPage() {
+export default function AdminStatusPage() {
   return (
     <Suspense
-      fallback={
-        <div className="mx-auto px-6 py-12 text-muted">Loading status…</div>
-      }
+      fallback={<div className="text-muted">Loading status…</div>}
     >
       <StatusContent />
     </Suspense>
@@ -69,24 +67,26 @@ export default function StatusPage() {
 
 async function StatusContent() {
   const sourceRows = mergeSourceRows(await listSourceHealth());
+  const mvpPhases = implementationPlan.filter((phase) => phase.id !== "post-mvp");
+  const postMvp = implementationPlan.find((phase) => phase.id === "post-mvp");
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-6 py-12">
+    <div className="flex flex-col gap-12">
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
             Status
           </h1>
           <Link
-            href="/stores"
+            href="/admin/stores"
             className="text-sm text-muted transition-colors hover:text-fg"
           >
             Store link builders →
           </Link>
         </div>
         <p className="text-muted">
-          Source health from real cron runs and implementation progress tracked
-          in code.
+          Source health from real cron runs. Implementation checklist below —
+          MVP is marked done; post-MVP lives in its own section.
         </p>
       </header>
 
@@ -138,42 +138,67 @@ async function StatusContent() {
 
       <section className="flex flex-col gap-6">
         <h2 className="font-display text-xl font-semibold text-fg">
-          Implementation plan
+          Implementation plan (MVP)
         </h2>
-        {implementationPlan.map((phase) => (
-          <div key={phase.id} className="flex flex-col gap-3">
-            <h3 className="text-lg font-medium text-fg">{phase.title}</h3>
-            <ul className="flex flex-col gap-2">
-              {phase.tasks.map((task) => (
-                <li
-                  key={task.id}
-                  className="flex items-start gap-3 rounded-lg border border-stroke bg-surface px-4 py-3"
-                >
-                  <span
-                    className={`mt-0.5 inline-flex shrink-0 rounded-md px-2 py-0.5 text-xs font-medium capitalize ${statusBadgeClass(
-                      task.status === "done"
-                        ? "ok"
-                        : task.status === "blocked"
-                          ? "broken"
-                          : task.status === "in_progress"
-                            ? "degraded"
-                            : "unknown",
-                    )}`}
-                  >
-                    {taskStatusLabel(task.status)}
-                  </span>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-fg">{task.title}</span>
-                    {task.notes ? (
-                      <span className="text-sm text-muted">{task.notes}</span>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {mvpPhases.map((phase) => (
+          <PlanPhase key={phase.id} phase={phase} />
         ))}
       </section>
+
+      {postMvp ? (
+        <section className="flex flex-col gap-6">
+          <div className="flex flex-col gap-1">
+            <h2 className="font-display text-xl font-semibold text-fg">
+              Post-MVP / future
+            </h2>
+            <p className="text-sm text-muted">
+              Not in scope for MVP (eShop, ITAD, eBay physical, remaining store
+              product URLs, affiliates, live FX, admin auth).
+            </p>
+          </div>
+          <PlanPhase phase={postMvp} />
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function PlanPhase({
+  phase,
+}: {
+  phase: (typeof implementationPlan)[number];
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-lg font-medium text-fg">{phase.title}</h3>
+      <ul className="flex flex-col gap-2">
+        {phase.tasks.map((task) => (
+          <li
+            key={task.id}
+            className="flex items-start gap-3 rounded-lg border border-stroke bg-surface px-4 py-3"
+          >
+            <span
+              className={`mt-0.5 inline-flex shrink-0 rounded-md px-2 py-0.5 text-xs font-medium capitalize ${statusBadgeClass(
+                task.status === "done"
+                  ? "ok"
+                  : task.status === "blocked"
+                    ? "broken"
+                    : task.status === "in_progress"
+                      ? "degraded"
+                      : "unknown",
+              )}`}
+            >
+              {taskStatusLabel(task.status)}
+            </span>
+            <div className="flex flex-col gap-1">
+              <span className="text-fg">{task.title}</span>
+              {task.notes ? (
+                <span className="text-sm text-muted">{task.notes}</span>
+              ) : null}
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

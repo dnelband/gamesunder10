@@ -13,6 +13,11 @@ export interface ImplementationPhase {
   tasks: ImplementationTask[];
 }
 
+/**
+ * Source of truth for /admin/status — keep in sync with what actually ships.
+ * MVP: CheapShark (PC) + PSN + Xbox, deals UI, enrichment, product-first links.
+ * Explicitly out of MVP: Nintendo eShop, ITAD, eBay physical.
+ */
 export const implementationPlan: ImplementationPhase[] = [
   {
     id: "foundation",
@@ -30,8 +35,16 @@ export const implementationPlan: ImplementationPhase[] = [
       },
       {
         id: "status-dashboard",
-        title: "/status dashboard (source health + plan)",
+        title: "/admin/status (source health + plan)",
         status: "done",
+        notes: "Moved under /admin with dashboard + stores.",
+      },
+      {
+        id: "admin-shell",
+        title: "/admin dashboard + ops pages",
+        status: "done",
+        notes:
+          "No auth for now (no secrets on these pages). Public deals stay at /deals.",
       },
       {
         id: "caching-rules",
@@ -42,52 +55,42 @@ export const implementationPlan: ImplementationPhase[] = [
   },
   {
     id: "ingestion",
-    title: "Ingestion",
+    title: "Ingestion (MVP)",
     tasks: [
       {
         id: "cheapshark",
         title: "CheapShark fetcher + normalizer",
         status: "done",
         notes:
-          "Run via npm run cron-local against localhost — CheapShark 429s from Vercel IPs.",
-      },
-      {
-        id: "itad",
-        title: "IsThereAnyDeal fetcher + normalizer",
-        status: "planned",
+          "Run via npm run cron-local — CheapShark 429s from Vercel IPs.",
       },
       {
         id: "psn",
         title: "PSN scraper",
         status: "done",
         notes:
-          "GraphQL categoryGridRetrieve, de-DE EUR, PS4/PS5 full games ≤€10; IGDB enrichment at cron with external ID lookup first, then conservative cleaned exact-title fallback; /api/cron/psn.",
+          "GraphQL categoryGridRetrieve, de-DE EUR, PS4/PS5 full games ≤€10; IGDB at cron; /api/cron/psn.",
       },
       {
         id: "xbox",
-        title: "Xbox scraper",
-        status: "in_progress",
+        title: "Xbox catalog browse",
+        status: "done",
         notes:
-          "Emerald GET browse (de-DE/EUR). Response has channels (IDs) + productSummaries (full data). No deals-only channel — scan full catalog (~340×50, ~2 min) and filter €0.01–10 games on Xbox Series X|S / Xbox One. /api/cron/xbox daily 07:00 UTC.",
-      },
-      {
-        id: "eshop",
-        title: "Nintendo eShop scraper",
-        status: "planned",
+          "Emerald browse de-DE/EUR; filter €0.01–10 on Series X|S / One. /api/cron/xbox daily.",
       },
       {
         id: "cron-routes",
         title: "Cron routes per source (CRON_SECRET)",
-        status: "in_progress",
+        status: "done",
         notes:
-          "PSN + Xbox on Vercel daily (Hobby). CheapShark local only (429 from cloud). ITAD/eShop pending.",
+          "PSN + Xbox on Vercel Cron. CheapShark local only (429 from cloud).",
       },
       {
         id: "cron-orchestrator",
         title: "Cron scripts: remote + local",
         status: "done",
         notes:
-          "npm run cron → REMOTE_SOURCES (psn, xbox) via CRON_BASE_URL. npm run cron-local → LOCAL_SOURCES (cheapshark) via localhost.",
+          "npm run cron → psn/xbox. npm run cron-local → cheapshark.",
       },
       {
         id: "deals-table",
@@ -99,85 +102,67 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "Stale deal cleanup after successful source sync",
         status: "done",
         notes:
-          "syncSourceDeals(): upsert run IDs then DELETE WHERE source=? AND id NOT IN (...). Empty fetches never wipe. Wired into cheapshark/psn/xbox cron.",
+          "syncSourceDeals(): upsert then DELETE absent IDs. Empty fetches never wipe.",
       },
     ],
   },
   {
     id: "app",
-    title: "Deals app",
+    title: "Deals app (MVP)",
     tasks: [
       {
         id: "deals-listing",
         title: "Deals listing page (server-side filters)",
         status: "done",
-        notes:
-          "Expandable filters + pagination (24/page) via URL searchParams. Phase 1 UX: useTransition pending skeletons, stable filter shell, loading.tsx.",
       },
       {
         id: "deals-perf",
-        title: "Deals listing performance (skeletons, slim queries, indexes)",
+        title: "Deals listing performance",
         status: "done",
-        notes:
-          "Phases 1–3 + GIN indexes + 090-performance.mdc. Nested Suspense, next/image, Link prefetch, DealListing slim SELECT, DISTINCT unnest filter options.",
       },
       {
         id: "game-grouping",
         title: "Group deals by game (platform-scoped, cheapest lead)",
         status: "done",
-        notes:
-          "Listing shows GameOffer cards; detail at /deals/[groupKey] with all store offers. PC and console kept separate.",
       },
       {
         id: "branding-v1",
-        title: "Broke Gamer Arcade branding (tokens, fonts, deals UI)",
+        title: "Broke Gamer Arcade branding",
         status: "done",
-        notes:
-          "Dark warm + heat palette; Bricolage + DM Sans; wordmark + tagline; cover-first cards with --price/--cut; BG favicon.",
       },
       {
         id: "distribution-format",
         title: "Physical vs digital indicator on deals",
         status: "done",
-        notes:
-          "Field + column + digital defaults for CS/PSN/Xbox. Physical badge ready. eBay physical ingest deferred until developer account approved — outside MVP for now.",
-      },
-      {
-        id: "ebay-physical",
-        title: "eBay Browse API (DE) physical games under €10",
-        status: "blocked",
-        notes:
-          "Code PoC ready; waiting on eBay Developers Program account approval. Outside MVP until then.",
+        notes: "Digital defaults for CS/PSN/Xbox. Physical badge ready for later sources.",
       },
       {
         id: "store-url-builders",
-        title: "Per-store URL builders (CheapShark stores)",
-        status: "in_progress",
+        title: "Per-store product URL builders (CheapShark)",
+        status: "done",
         notes:
-          "Product-first at render (resolveOfferUrl). Live product: Steam, Epic, GOG, GMG, GamersGate, Humble, Fanatical, GameBillet. Search fallback when product needs unknowable store id (WinGameStore) or no product builder yet — never DDG. Smoke: npm run smoke:store-urls.",
+          "Render-time resolveOfferUrl. Product: Steam, Epic, GOG, GMG, GamersGate, Humble, Fanatical, GameBillet. Search fallback when product needs unknowable id or no builder yet.",
       },
       {
         id: "store-url-observability",
-        title: "Store deal counts + link builder coverage on /stores",
+        title: "Store deal counts + builder coverage on /admin/stores",
         status: "done",
-        notes:
-          "Ops page at /stores: deal counts + product|search|omit from store-registry. Linked from /status. Hit-rate via smoke:store-urls (not on page view).",
       },
       {
         id: "deal-genres",
-        title: "Genre tags on deals (source first, IGDB fallback at cron)",
+        title: "Genre tags on deals",
         status: "done",
       },
       {
         id: "deal-rating",
-        title: "Rating on deals (source first, IGDB fallback at cron)",
+        title: "Rating on deals",
         status: "done",
       },
       {
         id: "currency",
-        title: "EUR conversion utility at ingestion",
+        title: "EUR conversion at ingestion",
         status: "done",
-        notes: "Fixed USD→EUR rate via USD_TO_EUR_RATE env; replace with live FX later.",
+        notes: "Fixed USD→EUR via USD_TO_EUR_RATE; live FX later.",
       },
     ],
   },
@@ -194,8 +179,7 @@ export const implementationPlan: ImplementationPhase[] = [
         id: "igdb-metadata",
         title: "Game metadata on deal views",
         status: "done",
-        notes:
-          "IGDB enrichment runs at cron only; description/cover/screenshots/genres/rating persisted on deals row. get-game-metadata.ts reserved for future wishlist.",
+        notes: "IGDB at cron only; snapshot on deals row.",
       },
     ],
   },
@@ -206,13 +190,63 @@ export const implementationPlan: ImplementationPhase[] = [
       {
         id: "vercel-supabase",
         title: "Vercel + Supabase Postgres",
-        status: "in_progress",
-        notes: "POSTGRES_* from Vercel integration; migrations run locally against Supabase.",
+        status: "done",
+        notes: "POSTGRES_* from Vercel integration; migrate locally against Supabase.",
       },
       {
         id: "cron-secret",
         title: "CRON_SECRET for production cron auth",
         status: "done",
+      },
+    ],
+  },
+  {
+    id: "post-mvp",
+    title: "Post-MVP / future",
+    tasks: [
+      {
+        id: "eshop",
+        title: "Nintendo eShop scraper",
+        status: "planned",
+        notes: "Explicitly out of MVP. Add when Switch coverage is wanted.",
+      },
+      {
+        id: "itad",
+        title: "IsThereAnyDeal fetcher + normalizer",
+        status: "planned",
+        notes: "Optional — CheapShark already covers most PC storefronts.",
+      },
+      {
+        id: "ebay-physical",
+        title: "eBay Browse API (DE) physical games under €10",
+        status: "blocked",
+        notes:
+          "PoC coded; waiting on eBay Developers Program approval.",
+      },
+      {
+        id: "store-url-remaining",
+        title: "Product URLs for remaining CheapShark stores",
+        status: "planned",
+        notes:
+          "Still search-only: WinGameStore (needs numeric id), Uplay, Gamesplanet, IndieGala. Add when product patterns are proven.",
+      },
+      {
+        id: "affiliate-params",
+        title: "Affiliate / referral params on outbound links",
+        status: "planned",
+        notes: "Single wrapper in resolveOfferUrl — do not store in DB.",
+      },
+      {
+        id: "live-fx",
+        title: "Live USD→EUR FX at ingestion",
+        status: "planned",
+        notes: "Replace fixed USD_TO_EUR_RATE.",
+      },
+      {
+        id: "admin-auth",
+        title: "Auth for /admin (shared secret or simple login)",
+        status: "planned",
+        notes: "Not needed while ops pages expose no secrets.",
       },
     ],
   },

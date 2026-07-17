@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { BrandWordmark } from "@/components/brand-wordmark";
 import { listStoreDealStats } from "@/lib/db/store-stats";
 import { dealsHrefForStore } from "@/lib/deals/filters";
 import type { StoreUrlKind } from "@/lib/sources/cheapshark/store-url-kinds";
@@ -17,13 +16,9 @@ function builderBadgeClass(kind: StoreUrlKind): string {
   }
 }
 
-export default function StoresPage() {
+export default function AdminStoresPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="mx-auto px-6 py-12 text-muted">Loading stores…</div>
-      }
-    >
+    <Suspense fallback={<div className="text-muted">Loading stores…</div>}>
       <StoresContent />
     </Suspense>
   );
@@ -37,21 +32,7 @@ async function StoresContent() {
   const omit = stats.filter((row) => row.builder.kind === "omit").length;
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 py-12">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <Link href="/deals" className="w-fit">
-          <BrandWordmark size="sm" />
-        </Link>
-        <nav className="flex flex-wrap gap-4 text-sm text-muted">
-          <Link href="/status" className="hover:text-fg">
-            Status
-          </Link>
-          <Link href="/deals" className="hover:text-fg">
-            Deals
-          </Link>
-        </nav>
-      </div>
-
+    <div className="flex flex-col gap-10">
       <header className="flex flex-col gap-2">
         <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
           Stores
@@ -144,7 +125,7 @@ async function StoresContent() {
       </div>
 
       <p className="text-xs text-muted">
-        Ops-only page — not linked from public nav. Builder registry:{" "}
+        Builder registry:{" "}
         <code className="rounded bg-surface-2 px-1">
           lib/sources/cheapshark/store-registry.ts
         </code>
