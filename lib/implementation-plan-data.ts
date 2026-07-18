@@ -90,7 +90,7 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "Cron scripts: remote + local",
         status: "done",
         notes:
-          "npm run cron → psn/xbox. npm run cron-local → cheapshark.",
+          "npm run cron → psn/xbox. npm run cron-local → cheapshark. Headless Mac: scripts/run-local-cron.sh (+ launchd via install-local-cron-launchd.sh).",
       },
       {
         id: "deals-table",
