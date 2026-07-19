@@ -251,9 +251,10 @@ export const implementationPlan: ImplementationPhase[] = [
       },
       {
         id: "wishlist",
-        title: "User wishlist (save games, optional price alerts)",
-        status: "planned",
-        notes: "Requires user-auth. Store by groupKey / steamAppId; alerts later.",
+        title: "User wishlist (games not in deals yet)",
+        status: "done",
+        notes:
+          "IGDB-backed. Add only from /wishlist search or empty deals search CTA — not from existing deal cards. Rejects add if game already under €10.",
       },
       {
         id: "admin-auth",

@@ -117,7 +117,7 @@ async function DealsResults({
   if (games.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-stroke bg-surface px-4 py-10 text-center">
-        <EmptyDealsMessage />
+        <EmptyDealsMessage searchQuery={filters.q} />
       </div>
     );
   }

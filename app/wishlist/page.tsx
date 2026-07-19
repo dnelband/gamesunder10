@@ -1,10 +1,33 @@
-import Link from "next/link";
+import { connection } from "next/server";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
 import { SiteHeader } from "@/components/site-header";
+import {
+  findDealMatchesForWishlist,
+  listWishlistItems,
+} from "@/lib/db/wishlists";
+import { searchGamesForWishlist } from "@/lib/enrichment/igdb-wishlist-search";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function WishlistPage() {
+import { WishlistGrid, WishlistSearch } from "./wishlist-client";
+
+export default function WishlistPage(props: PageProps<"/wishlist">) {
+  return (
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 py-10 sm:px-6">
+      <SiteHeader size="sm" />
+      <Suspense
+        fallback={<div className="text-muted">Loading wishlist…</div>}
+      >
+        <WishlistContent {...props} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function WishlistContent(props: PageProps<"/wishlist">) {
+  await connection();
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,34 +37,41 @@ export default async function WishlistPage() {
     redirect("/login?next=/wishlist");
   }
 
-  return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6">
-      <SiteHeader size="sm" />
+  const searchParams = await props.searchParams;
+  const qRaw = searchParams.q;
+  const q = (Array.isArray(qRaw) ? qRaw[0] : qRaw)?.trim() ?? "";
 
+  const [items, searchResults] = await Promise.all([
+    listWishlistItems(user.id),
+    q.length >= 2 ? searchGamesForWishlist(q) : Promise.resolve([]),
+  ]);
+  const matches = await findDealMatchesForWishlist(items);
+
+  return (
+    <>
       <header className="flex flex-col gap-2">
         <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
           Wishlist
         </h1>
         <p className="text-muted">
-          Save games you care about. Full wishlist is next — this page is a
-          placeholder so the account menu has somewhere to go.
+          Track games that are not under €10 yet — including unreleased titles.
+          When a deal appears, it shows up here.
         </p>
       </header>
 
-      <div className="rounded-lg border border-dashed border-stroke bg-surface px-4 py-10 text-center">
-        <p className="font-display text-lg font-semibold text-fg">
-          Nothing saved yet.
-        </p>
-        <p className="mt-2 text-sm text-muted">
-          When wishlist lands, you&apos;ll pin deals from game pages here.
-        </p>
-        <Link
-          href="/deals"
-          className="mt-6 inline-flex h-10 items-center rounded-md bg-accent px-4 text-sm font-semibold text-fg transition-opacity hover:opacity-90"
-        >
-          Browse deals
-        </Link>
-      </div>
-    </div>
+      <WishlistSearch initialQuery={q} initialResults={searchResults} />
+
+      <section className="flex flex-col gap-4">
+        <h2 className="font-display text-xl font-semibold text-fg">
+          Your list
+          {items.length > 0 ? (
+            <span className="ml-2 text-base font-normal text-muted">
+              ({items.length})
+            </span>
+          ) : null}
+        </h2>
+        <WishlistGrid items={items} matches={matches} />
+      </section>
+    </>
   );
 }

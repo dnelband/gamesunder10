@@ -221,3 +221,62 @@ export async function fetchGameMetadataByExactTitles(
 
   return result;
 }
+
+export interface IgdbSearchCandidate {
+  igdbId: number;
+  title: string;
+  coverUrl: string | null;
+  releaseDate: string | null;
+  steamAppId: string | null;
+}
+
+/** Fuzzy IGDB title search for wishlist (user picks a candidate). */
+export async function searchIgdbGames(
+  query: string,
+  limit = 10,
+): Promise<IgdbSearchCandidate[]> {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const clientId = getIgdbClientId();
+  const token = await getIgdbAccessToken();
+  if (!clientId || !token) {
+    return [];
+  }
+
+  const safeLimit = Math.max(1, Math.min(limit, 20));
+  const games = await igdbPost<IgdbGame>(
+    "games",
+    `search "${escapeIgdbString(trimmed)}"; fields name, first_release_date, cover.url; limit ${safeLimit};`,
+  );
+
+  if (games.length === 0) {
+    return [];
+  }
+
+  const gameIds = games.map((game) => game.id);
+  const steamByGameId = new Map<number, string>();
+  const external = await igdbPost<IgdbExternalGame>(
+    "external_games",
+    `fields game, uid; where external_game_source = ${IGDB_STEAM_SOURCE} & game = (${gameIds.join(",")}); limit 100;`,
+  );
+  for (const row of external) {
+    if (!steamByGameId.has(row.game)) {
+      steamByGameId.set(row.game, row.uid);
+    }
+  }
+
+  return games
+    .filter((game) => Boolean(game.name))
+    .map((game) => ({
+      igdbId: game.id,
+      title: game.name as string,
+      coverUrl: igdbImageUrl(game.cover?.url),
+      releaseDate: game.first_release_date
+        ? new Date(game.first_release_date * 1000).toISOString().slice(0, 10)
+        : null,
+      steamAppId: steamByGameId.get(game.id) ?? null,
+    }));
+}

@@ -5,6 +5,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const sourceHealth = pgTable("source_health", {
@@ -64,5 +65,29 @@ export const deals = pgTable(
     index("deals_rating_idx").on(table.rating),
     index("deals_platforms_gin_idx").using("gin", table.platforms),
     index("deals_genres_gin_idx").using("gin", table.genres),
+  ],
+);
+
+/** Games the user is watching that are not (yet) in the deals catalog. */
+export const wishlists = pgTable(
+  "wishlists",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    igdbId: integer("igdb_id").notNull(),
+    title: text("title").notNull(),
+    coverUrl: text("cover_url"),
+    releaseDate: text("release_date"),
+    steamAppId: text("steam_app_id"),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("wishlists_user_igdb_uidx").on(table.userId, table.igdbId),
+    index("wishlists_user_id_idx").on(table.userId),
   ],
 );
