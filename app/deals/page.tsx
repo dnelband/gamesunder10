@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { BrandWordmark } from "@/components/brand-wordmark";
+import { SiteHeader } from "@/components/site-header";
 import {
   getCachedDealFilterOptions,
   getCachedGameOffersPage,
@@ -48,9 +48,7 @@ function resultsKey(filters: DealListFilters, page: number): string {
 export default function DealsPage(props: PageProps<"/deals">) {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6">
-      <header>
-        <BrandWordmark size="lg" />
-      </header>
+      <SiteHeader size="lg" />
 
       <Suspense fallback={<DealsPageFallback />}>
         <DealsBrowse {...props} />

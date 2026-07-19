@@ -47,6 +47,13 @@ export const implementationPlan: ImplementationPhase[] = [
           "No auth for now (no secrets on these pages). Public deals stay at /deals.",
       },
       {
+        id: "user-auth",
+        title: "Supabase Auth (email sign-in)",
+        status: "done",
+        notes:
+          "Email password + magic link via @supabase/ssr. proxy.ts refreshes session. /login + header Sign in/out. Wishlist next.",
+      },
+      {
         id: "caching-rules",
         title: "Caching strategy (080-caching.mdc)",
         status: "done",
@@ -241,6 +248,12 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "Live USD→EUR FX at ingestion",
         status: "planned",
         notes: "Replace fixed USD_TO_EUR_RATE.",
+      },
+      {
+        id: "wishlist",
+        title: "User wishlist (save games, optional price alerts)",
+        status: "planned",
+        notes: "Requires user-auth. Store by groupKey / steamAppId; alerts later.",
       },
       {
         id: "admin-auth",
