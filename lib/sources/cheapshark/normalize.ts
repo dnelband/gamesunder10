@@ -1,10 +1,9 @@
 import { parseUsdPrice, usdToEur } from "@/lib/currency";
 import { buildDealId, normalizeTitle } from "@/lib/deal-utils";
+import { MAX_PRICE_EUR } from "@/lib/pricing";
 import type { NormalizedDeal, RatingSource } from "@/types/deal";
 
 import type { CheapsharkDeal } from "./schema";
-
-const MAX_PRICE_EUR = 10;
 
 function sourceReleaseDate(releaseDate: number): string | null {
   if (releaseDate <= 0) {

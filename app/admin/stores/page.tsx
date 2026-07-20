@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { ADMIN_BADGE } from "@/app/admin/badge-classes";
 import { listStoreDealStats } from "@/lib/db/store-stats";
 import { dealsHrefForStore } from "@/lib/deals/filters";
 import { clsx } from "clsx";
@@ -9,11 +10,11 @@ import type { StoreUrlKind } from "@/lib/sources/cheapshark/store-url-kinds";
 function builderBadgeClass(kind: StoreUrlKind): string {
   switch (kind) {
     case "product":
-      return "bg-cut/15 text-cut";
+      return ADMIN_BADGE.ok;
     case "search":
-      return "bg-price/20 text-price";
+      return ADMIN_BADGE.warn;
     default:
-      return "bg-danger/15 text-danger";
+      return ADMIN_BADGE.danger;
   }
 }
 

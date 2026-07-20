@@ -21,6 +21,7 @@ import {
   type DealForGrouping,
 } from "@/lib/deals/grouping";
 import { CONSOLE_PLATFORMS } from "@/lib/deals/platforms";
+import { MAX_PRICE_EUR } from "@/lib/pricing";
 import type {
   DealListing,
   GameOffer,
@@ -32,8 +33,6 @@ import type { DealSource } from "@/types/deal-source";
 
 import { db } from "./client";
 import { deals } from "./schema";
-
-const MAX_PRICE_EUR = 10;
 
 const listingColumns = {
   id: deals.id,

@@ -1,4 +1,5 @@
 import type { NormalizedDeal } from "@/types/deal";
+import { delay } from "@/lib/delay";
 
 import {
   PSN_MAX_PRODUCTS,
@@ -7,12 +8,6 @@ import {
 } from "./config";
 import { fetchPsnDealsPage } from "./graphql-client";
 import { normalizePsnProduct } from "./normalize";
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
 
 export async function fetchDeals(): Promise<NormalizedDeal[]> {
   const deals: NormalizedDeal[] = [];

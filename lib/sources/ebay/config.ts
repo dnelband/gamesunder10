@@ -1,6 +1,6 @@
 /** eBay Browse API — DE physical games PoC (free developer app). */
 
-export const EBAY_MAX_PRICE_EUR = 10;
+export { MAX_PRICE_EUR as EBAY_MAX_PRICE_EUR } from "@/lib/pricing";
 export const EBAY_PAGE_SIZE = 200;
 /** Cap API pages per run (200 × 10 = 2k listings scanned). */
 export const EBAY_MAX_PAGES = 10;

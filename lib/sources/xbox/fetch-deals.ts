@@ -1,4 +1,5 @@
 import type { NormalizedDeal } from "@/types/deal";
+import { delay } from "@/lib/delay";
 
 import { fetchXboxBrowsePage } from "./catalog-client";
 import {
@@ -7,12 +8,6 @@ import {
   XBOX_REQUEST_DELAY_MS,
 } from "./config";
 import { normalizeXboxProduct } from "./normalize";
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
 
 function maxPagesForCatalog(totalItems: number | null): number {
   if (totalItems == null || totalItems <= 0) {

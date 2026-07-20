@@ -9,13 +9,12 @@ import {
   groupDealsIntoOffers,
   type DealForGrouping,
 } from "@/lib/deals/grouping";
+import { MAX_PRICE_EUR } from "@/lib/pricing";
 import type { RatingSource } from "@/types/deal";
 import type { DealSource } from "@/types/deal-source";
 
 import { db } from "./client";
 import { deals, wishlists } from "./schema";
-
-const MAX_PRICE_EUR = 10;
 
 export interface WishlistItem {
   id: string;

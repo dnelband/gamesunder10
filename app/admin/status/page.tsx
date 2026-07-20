@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { ADMIN_BADGE } from "@/app/admin/badge-classes";
 import { implementationPlan } from "@/lib/implementation-plan-data";
 import { clsx } from "clsx";
 import {
@@ -13,13 +14,13 @@ import { DEAL_SOURCES } from "@/types/deal-source";
 function statusBadgeClass(status: SourceHealthStatus | "unknown"): string {
   switch (status) {
     case "ok":
-      return "bg-cut/15 text-cut";
+      return ADMIN_BADGE.ok;
     case "degraded":
-      return "bg-price/20 text-price";
+      return ADMIN_BADGE.warn;
     case "broken":
-      return "bg-danger/15 text-danger";
+      return ADMIN_BADGE.danger;
     default:
-      return "bg-surface-2 text-muted";
+      return ADMIN_BADGE.muted;
   }
 }
 

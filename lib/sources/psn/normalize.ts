@@ -1,12 +1,12 @@
 import { parseEurPrice } from "@/lib/currency";
 import { buildDealId, normalizeTitle } from "@/lib/deal-utils";
+import { PLAYSTATION_PLATFORMS } from "@/lib/deals/platforms";
+import { MAX_PRICE_EUR } from "@/lib/pricing";
 import type { NormalizedDeal } from "@/types/deal";
 
 import type { PsnProduct } from "./schema";
 import { buildPsnStoreUrl } from "./store-url";
 import { getPsnRegion } from "./config";
-
-const MAX_PRICE_EUR = 10;
 
 const IMAGE_ROLES = [
   "PORTRAIT_BANNER",
@@ -41,8 +41,6 @@ function discountPercent(product: PsnProduct): number {
 
   return 0;
 }
-
-const PLAYSTATION_PLATFORMS = ["PS4", "PS5"] as const;
 
 function dealPlatforms(product: PsnProduct): string[] {
   return product.platforms.filter((platform) =>

@@ -1,3 +1,5 @@
+import { delay } from "@/lib/delay";
+
 import {
   EBAY_MARKETPLACE_ID,
   EBAY_MAX_PAGES,
@@ -11,12 +13,6 @@ import {
   ebaySearchResponseSchema,
   type EbayItemSummary,
 } from "./schema";
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
 
 function buildSearchUrl(offset: number): string {
   const categoryId = getEbayCategoryId();

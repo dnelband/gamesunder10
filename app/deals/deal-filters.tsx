@@ -9,7 +9,10 @@ import {
   type DealListFilters,
 } from "@/lib/deals/filters";
 import { clsx } from "clsx";
-import { effectiveSearchQuery } from "@/lib/search-query";
+import {
+  effectiveSearchQuery,
+  SEARCH_DEBOUNCE_MS,
+} from "@/lib/search-query";
 
 import { useDealsNav } from "./deals-nav";
 
@@ -26,8 +29,6 @@ const RATING_OPTIONS = [
   { value: 80, label: "80+" },
   { value: 90, label: "90+" },
 ] as const;
-
-const SEARCH_DEBOUNCE_MS = 500;
 
 function toggleValue(values: string[], value: string): string[] {
   if (values.includes(value)) {

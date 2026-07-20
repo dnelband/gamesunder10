@@ -12,9 +12,10 @@ import { GenreTags, releaseLabel, WishlistSuggestionTitleRow } from "@/app/wishl
 import type { IgdbSearchCandidate } from "@/lib/enrichment/igdb-wishlist-search";
 import { igdbGamePageUrl } from "@/lib/enrichment/igdb-client";
 import type { WishlistDealMatch, WishlistItem } from "@/lib/db/wishlists";
-import { effectiveSearchQuery } from "@/lib/search-query";
-
-const SEARCH_DEBOUNCE_MS = 500;
+import {
+  effectiveSearchQuery,
+  SEARCH_DEBOUNCE_MS,
+} from "@/lib/search-query";
 
 function useWishlistSearchState(initialQuery: string) {
   const router = useRouter();
