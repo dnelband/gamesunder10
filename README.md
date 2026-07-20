@@ -73,7 +73,7 @@ pnpm test:coverage
 pnpm lint
 ```
 
-Unit tests run with **Vitest** (`lib/**/*.test.ts`). `pnpm test:coverage` fails if total **statements** coverage drops below **80%**. `pnpm install` enables a Husky **pre-commit** hook that runs `pnpm lint && pnpm test`. GitHub Actions CI runs lint + coverage + `tsc --noEmit` on push/PR.
+Unit tests run with **Vitest** (`lib/**/*.test.ts`). `pnpm test:coverage` fails if total **statements** coverage drops below **80%**. `pnpm typecheck` runs `next typegen` then `tsc` (needed so `PageProps` route types exist). `pnpm install` enables a Husky **pre-commit** hook that runs `pnpm lint && pnpm test`. GitHub Actions CI runs lint + coverage + typecheck on push/PR.
 
 ## Deploy
 

@@ -9,7 +9,6 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       // Only files exercised by the unit suite — not fetchers / IGDB / DB I/O.
-      all: false,
       include: [
         "lib/currency.ts",
         "lib/deal-utils.ts",
