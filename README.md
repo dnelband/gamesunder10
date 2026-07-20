@@ -87,6 +87,13 @@ Versions are bumped **automatically** by [release-please](https://github.com/goo
 
 **Flow:** merge feature PRs with conventional commit messages → release-please opens a **Release PR** that updates `package.json`, `CHANGELOG.md`, and the manifest → merge that PR → GitHub Release + `v*` tag are created. The site footer reads those files, so the new version shows after deploy.
 
+**GitHub setup (one-time):**
+
+1. **Settings → Actions → General → Workflow permissions**
+   - Read and write permissions
+   - ✅ **Allow GitHub Actions to create and approve pull requests**
+2. Bootstrap the current release so history isn’t re-released: create a GitHub Release / tag **`v1.0.0`** on the commit that shipped 1.0.0 (or current `main` if that’s the baseline).
+
 Examples:
 
 ```bash
