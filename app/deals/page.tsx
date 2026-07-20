@@ -11,13 +11,15 @@ import {
   parsePage,
   type DealListFilters,
 } from "@/lib/deals/filters";
+import { searchGamesForWishlist } from "@/lib/enrichment/igdb-wishlist-search";
+import { listWishlistItems } from "@/lib/db/wishlists";
+import { createClient } from "@/lib/supabase/server";
 
 import { GameOfferCard } from "./game-offer-card";
 import { DealPagination } from "./deal-pagination";
 import {
   DealFiltersSkeleton,
   DealsGridSkeleton,
-  DealsSummarySkeleton,
 } from "./deals-grid-skeleton";
 import { DealsShell } from "./deals-shell";
 import { EmptyDealsMessage } from "./empty-deals-message";
@@ -25,10 +27,7 @@ import { EmptyDealsMessage } from "./empty-deals-message";
 function DealsPageFallback() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <DealFiltersSkeleton />
-        <DealsSummarySkeleton />
-      </div>
+      <DealFiltersSkeleton />
       <DealsGridSkeleton />
     </div>
   );
@@ -70,11 +69,6 @@ async function DealsBrowse(props: PageProps<"/deals">) {
       initialFilters={filters}
       availableGenres={filterOptions.genres}
       availablePlatforms={filterOptions.platforms}
-      summary={
-        <Suspense key={key} fallback={<DealsSummarySkeleton />}>
-          <DealsSummary filters={filters} page={page} />
-        </Suspense>
-      }
     >
       <Suspense key={key} fallback={<DealsGridSkeleton />}>
         <DealsResults filters={filters} page={page} />
@@ -83,25 +77,16 @@ async function DealsBrowse(props: PageProps<"/deals">) {
   );
 }
 
-async function DealsSummary({
-  filters,
-  page: requestedPage,
-}: {
-  filters: DealListFilters;
-  page: number;
-}) {
-  const { total, page, totalPages } = await getCachedGameOffersPage(
-    filters,
-    requestedPage,
-  );
-
-  return (
-    <>
-      {total} game{total === 1 ? "" : "s"}
-      {filters.store ? ` · ${filters.store}` : ""}
-      {totalPages > 1 ? ` · page ${page} of ${totalPages}` : ""}
-    </>
-  );
+async function loadWishlistedIgdbIds(): Promise<number[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return [];
+  }
+  const items = await listWishlistItems(user.id);
+  return items.map((item) => item.igdbId);
 }
 
 async function DealsResults({
@@ -115,9 +100,19 @@ async function DealsResults({
   const { games, total, page, pageSize, totalPages } = result;
 
   if (games.length === 0) {
+    const q = filters.q.trim();
+    const [wishlistSuggestions, wishlistedIgdbIds] = await Promise.all([
+      q ? searchGamesForWishlist(q, 5) : Promise.resolve([]),
+      loadWishlistedIgdbIds(),
+    ]);
+
     return (
       <div className="rounded-lg border border-dashed border-stroke bg-surface px-4 py-10 text-center">
-        <EmptyDealsMessage searchQuery={filters.q} />
+        <EmptyDealsMessage
+          searchQuery={filters.q}
+          wishlistSuggestions={wishlistSuggestions}
+          wishlistedIgdbIds={wishlistedIgdbIds}
+        />
       </div>
     );
   }

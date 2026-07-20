@@ -3,7 +3,6 @@ import { BrandWordmark } from "@/components/brand-wordmark";
 import {
   DealFiltersSkeleton,
   DealsGridSkeleton,
-  DealsSummarySkeleton,
 } from "./deals-grid-skeleton";
 
 export default function DealsLoading() {
@@ -13,10 +12,7 @@ export default function DealsLoading() {
         <BrandWordmark size="lg" />
       </header>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <DealFiltersSkeleton />
-          <DealsSummarySkeleton />
-        </div>
+        <DealFiltersSkeleton />
         <DealsGridSkeleton />
       </div>
     </div>

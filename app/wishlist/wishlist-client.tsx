@@ -2,25 +2,19 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type FormEvent } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import {
   addToWishlistAction,
   removeFromWishlistAction,
 } from "@/app/wishlist/actions";
+import { GenreTags, releaseLabel, WishlistSuggestionTitleRow } from "@/app/wishlist/wishlist-suggestion-meta";
 import type { IgdbSearchCandidate } from "@/lib/enrichment/igdb-wishlist-search";
+import { igdbGamePageUrl } from "@/lib/enrichment/igdb-client";
 import type { WishlistDealMatch, WishlistItem } from "@/lib/db/wishlists";
+import { effectiveSearchQuery } from "@/lib/search-query";
 
-function releaseLabel(releaseDate: string | null): string {
-  if (!releaseDate) {
-    return "Release TBA";
-  }
-  const today = new Date().toISOString().slice(0, 10);
-  if (releaseDate > today) {
-    return `Unreleased · ${releaseDate}`;
-  }
-  return releaseDate.slice(0, 4);
-}
+const SEARCH_DEBOUNCE_MS = 500;
 
 export function WishlistSearch({
   initialQuery,
@@ -35,23 +29,30 @@ export function WishlistSearch({
   const [error, setError] = useState<string | null>(null);
   const [addingId, setAddingId] = useState<number | null>(null);
 
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
+
+  useEffect(() => {
+    const effectiveQ = effectiveSearchQuery(query);
+    if (effectiveQ === initialQuery) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      startTransition(() => {
+        router.push(
+          effectiveQ ? `/wishlist?q=${encodeURIComponent(effectiveQ)}` : "/wishlist",
+        );
+      });
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [query, initialQuery, router]);
+
   function onQueryChange(value: string) {
     setQuery(value);
     setError(null);
-    // Native search "×" clears the field; drop URL results too.
-    if (!value.trim() && initialQuery) {
-      startTransition(() => {
-        router.push("/wishlist");
-      });
-    }
-  }
-
-  function onSearch(event: FormEvent) {
-    event.preventDefault();
-    const next = query.trim();
-    startTransition(() => {
-      router.push(next ? `/wishlist?q=${encodeURIComponent(next)}` : "/wishlist");
-    });
   }
 
   async function onAdd(candidate: IgdbSearchCandidate) {
@@ -74,7 +75,9 @@ export function WishlistSearch({
     });
   }
 
-  const showSuggestions = query.trim().length > 0;
+  const effectiveQuery = effectiveSearchQuery(query);
+  const activeSearch = initialQuery.length > 0;
+  const isSearching = pending || effectiveQuery !== initialQuery;
 
   return (
     <section className="flex flex-col gap-4">
@@ -84,26 +87,17 @@ export function WishlistSearch({
         </h2>
         <p className="text-sm text-muted">
           Wishlist is for titles that are not in deals yet (including
-          unreleased). Search IGDB, then add.
+          unreleased). Start typing to search IGDB.
         </p>
       </div>
 
-      <form onSubmit={onSearch} className="flex flex-wrap gap-2">
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Game title…"
-          className="h-11 min-w-[12rem] flex-1 rounded-md border border-stroke bg-surface px-3 text-fg outline-none focus:border-muted"
-        />
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex h-11 items-center rounded-md bg-accent px-4 text-sm font-semibold text-fg transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
-          {pending ? "Searching…" : "Search"}
-        </button>
-      </form>
+      <input
+        type="search"
+        value={query}
+        onChange={(event) => onQueryChange(event.target.value)}
+        placeholder="Game title…"
+        className="h-11 w-full rounded-md border border-stroke bg-surface px-3 text-fg outline-none focus:border-muted"
+      />
 
       {error ? (
         <p className="rounded-md border border-stroke bg-surface px-3 py-2 text-sm text-danger">
@@ -111,11 +105,15 @@ export function WishlistSearch({
         </p>
       ) : null}
 
-      {showSuggestions && initialQuery && initialResults.length === 0 ? (
+      {isSearching ? (
+        <p className="text-sm text-muted">Searching…</p>
+      ) : null}
+
+      {activeSearch && initialResults.length === 0 ? (
         <p className="text-sm text-muted">No IGDB matches for “{initialQuery}”.</p>
       ) : null}
 
-      {showSuggestions && initialResults.length > 0 ? (
+      {activeSearch && initialResults.length > 0 ? (
         <ul className="divide-y divide-stroke rounded-lg border border-stroke">
           {initialResults.map((candidate) => (
             <li
@@ -133,12 +131,12 @@ export function WishlistSearch({
                 ) : null}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-fg">
-                  {candidate.title}
-                </p>
-                <p className="text-xs text-muted">
-                  {releaseLabel(candidate.releaseDate)}
-                </p>
+                <WishlistSuggestionTitleRow
+                  title={candidate.title}
+                  releaseDate={candidate.releaseDate}
+                  href={igdbGamePageUrl(candidate)}
+                />
+                <GenreTags genres={candidate.genres} />
               </div>
               <button
                 type="button"

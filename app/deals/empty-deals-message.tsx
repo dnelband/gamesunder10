@@ -1,6 +1,16 @@
-import Link from "next/link";
+import type { IgdbSearchCandidate } from "@/lib/enrichment/igdb-wishlist-search";
 
-export function EmptyDealsMessage({ searchQuery }: { searchQuery?: string }) {
+import { EmptyDealsWishlistSuggestions } from "./empty-deals-wishlist-suggestions";
+
+export function EmptyDealsMessage({
+  searchQuery,
+  wishlistSuggestions = [],
+  wishlistedIgdbIds = [],
+}: {
+  searchQuery?: string;
+  wishlistSuggestions?: IgdbSearchCandidate[];
+  wishlistedIgdbIds?: number[];
+}) {
   const q = searchQuery?.trim() ?? "";
 
   return (
@@ -12,16 +22,10 @@ export function EmptyDealsMessage({ searchQuery }: { searchQuery?: string }) {
         Beggers cant be choosers after all!
       </p>
       {q ? (
-        <p className="mt-4 text-sm text-muted">
-          No deals match “{q}”.{" "}
-          <Link
-            href={`/wishlist?q=${encodeURIComponent(q)}`}
-            className="font-semibold text-accent underline-offset-2 hover:underline"
-          >
-            Add to wishlist
-          </Link>{" "}
-          to watch for a future price drop (released or unreleased).
-        </p>
+        <EmptyDealsWishlistSuggestions
+          suggestions={wishlistSuggestions}
+          wishlistedIgdbIds={wishlistedIgdbIds}
+        />
       ) : null}
     </>
   );

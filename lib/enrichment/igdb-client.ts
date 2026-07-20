@@ -10,6 +10,7 @@ interface IgdbExternalGame {
 interface IgdbGame {
   id: number;
   name?: string;
+  slug?: string;
   summary?: string;
   aggregated_rating?: number;
   first_release_date?: number;
@@ -225,9 +226,21 @@ export async function fetchGameMetadataByExactTitles(
 export interface IgdbSearchCandidate {
   igdbId: number;
   title: string;
+  slug: string | null;
   coverUrl: string | null;
   releaseDate: string | null;
   steamAppId: string | null;
+  genres: string[];
+}
+
+export function igdbGamePageUrl(candidate: {
+  slug: string | null;
+  igdbId: number;
+}): string {
+  if (candidate.slug) {
+    return `https://www.igdb.com/games/${candidate.slug}`;
+  }
+  return `https://www.igdb.com/games/${candidate.igdbId}`;
 }
 
 /** Fuzzy IGDB title search for wishlist (user picks a candidate). */
@@ -249,7 +262,7 @@ export async function searchIgdbGames(
   const safeLimit = Math.max(1, Math.min(limit, 20));
   const games = await igdbPost<IgdbGame>(
     "games",
-    `search "${escapeIgdbString(trimmed)}"; fields name, first_release_date, cover.url; limit ${safeLimit};`,
+    `search "${escapeIgdbString(trimmed)}"; fields name, slug, first_release_date, cover.url, genres.name; limit ${safeLimit};`,
   );
 
   if (games.length === 0) {
@@ -273,10 +286,12 @@ export async function searchIgdbGames(
     .map((game) => ({
       igdbId: game.id,
       title: game.name as string,
+      slug: game.slug ?? null,
       coverUrl: igdbImageUrl(game.cover?.url),
       releaseDate: game.first_release_date
         ? new Date(game.first_release_date * 1000).toISOString().slice(0, 10)
         : null,
       steamAppId: steamByGameId.get(game.id) ?? null,
+      genres: (game.genres ?? []).map((genre) => genre.name),
     }));
 }

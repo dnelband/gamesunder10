@@ -8,6 +8,7 @@ import {
   listWishlistItems,
 } from "@/lib/db/wishlists";
 import { searchGamesForWishlist } from "@/lib/enrichment/igdb-wishlist-search";
+import { effectiveSearchQuery } from "@/lib/search-query";
 import { createClient } from "@/lib/supabase/server";
 
 import { WishlistGrid, WishlistSearch } from "./wishlist-client";
@@ -39,11 +40,11 @@ async function WishlistContent(props: PageProps<"/wishlist">) {
 
   const searchParams = await props.searchParams;
   const qRaw = searchParams.q;
-  const q = (Array.isArray(qRaw) ? qRaw[0] : qRaw)?.trim() ?? "";
+  const q = effectiveSearchQuery(Array.isArray(qRaw) ? qRaw[0] : qRaw);
 
   const [items, searchResults] = await Promise.all([
     listWishlistItems(user.id),
-    q.length >= 2 ? searchGamesForWishlist(q) : Promise.resolve([]),
+    q ? searchGamesForWishlist(q) : Promise.resolve([]),
   ]);
   const matches = await findDealMatchesForWishlist(items);
 

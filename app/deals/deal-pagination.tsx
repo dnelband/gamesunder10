@@ -44,13 +44,14 @@ export function DealPagination({
 }: DealPaginationProps) {
   const { navigate, isPending } = useDealsNav();
 
-  if (totalPages <= 1) {
+  if (total === 0) {
     return null;
   }
 
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
   const pages = pageWindow(page, totalPages);
+  const showControls = totalPages > 1;
 
   const linkClass =
     "inline-flex h-10 min-w-10 items-center justify-center rounded-md border border-stroke px-3 text-sm font-medium text-fg transition-colors duration-150 hover:bg-surface-2";
@@ -78,113 +79,124 @@ export function DealPagination({
 
   return (
     <nav
-      className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between"
+      className={`flex flex-col gap-3 ${
+        showControls
+          ? "items-center sm:flex-row sm:justify-between"
+          : "items-start"
+      }`}
       aria-label="Pagination"
       aria-busy={isPending}
     >
       <p className="text-sm text-muted">
-        {from}–{to} of {total}
+        {from}–{to} of {total.toLocaleString()} deal{total === 1 ? "" : "s"}
+        {filters.store ? ` · ${filters.store}` : ""}
       </p>
 
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        {page > 1 ? (
-          <Link
-            href={pageHref(filters, page - 1)}
-            prefetch
-            onClick={(event) =>
-              onNavigate(event, pageHref(filters, page - 1))
-            }
-            className={linkClass}
-            aria-disabled={isPending}
-            tabIndex={isPending ? -1 : undefined}
-          >
-            Previous
-          </Link>
-        ) : (
-          <span className={disabledClass}>Previous</span>
-        )}
-
-        {pages[0] > 1 ? (
-          <>
+      {showControls ? (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {page > 1 ? (
             <Link
-              href={pageHref(filters, 1)}
+              href={pageHref(filters, page - 1)}
               prefetch
-              onClick={(event) => onNavigate(event, pageHref(filters, 1))}
+              onClick={(event) =>
+                onNavigate(event, pageHref(filters, page - 1))
+              }
               className={linkClass}
               aria-disabled={isPending}
               tabIndex={isPending ? -1 : undefined}
             >
-              1
+              Previous
             </Link>
-            {pages[0] > 2 ? (
-              <span className="px-1 text-muted" aria-hidden>
-                …
-              </span>
-            ) : null}
-          </>
-        ) : null}
-
-        {pages.map((pageNumber) =>
-          pageNumber === page ? (
-            <span key={pageNumber} className={activeClass} aria-current="page">
-              {pageNumber}
-            </span>
           ) : (
-            <Link
-              key={pageNumber}
-              href={pageHref(filters, pageNumber)}
-              prefetch
-              onClick={(event) =>
-                onNavigate(event, pageHref(filters, pageNumber))
-              }
-              className={linkClass}
-              aria-disabled={isPending}
-              tabIndex={isPending ? -1 : undefined}
-            >
-              {pageNumber}
-            </Link>
-          ),
-        )}
+            <span className={disabledClass}>Previous</span>
+          )}
 
-        {pages[pages.length - 1] < totalPages ? (
-          <>
-            {pages[pages.length - 1] < totalPages - 1 ? (
-              <span className="px-1 text-muted" aria-hidden>
-                …
+          {pages[0] > 1 ? (
+            <>
+              <Link
+                href={pageHref(filters, 1)}
+                prefetch
+                onClick={(event) => onNavigate(event, pageHref(filters, 1))}
+                className={linkClass}
+                aria-disabled={isPending}
+                tabIndex={isPending ? -1 : undefined}
+              >
+                1
+              </Link>
+              {pages[0] > 2 ? (
+                <span className="px-1 text-muted" aria-hidden>
+                  …
+                </span>
+              ) : null}
+            </>
+          ) : null}
+
+          {pages.map((pageNumber) =>
+            pageNumber === page ? (
+              <span
+                key={pageNumber}
+                className={activeClass}
+                aria-current="page"
+              >
+                {pageNumber}
               </span>
-            ) : null}
+            ) : (
+              <Link
+                key={pageNumber}
+                href={pageHref(filters, pageNumber)}
+                prefetch
+                onClick={(event) =>
+                  onNavigate(event, pageHref(filters, pageNumber))
+                }
+                className={linkClass}
+                aria-disabled={isPending}
+                tabIndex={isPending ? -1 : undefined}
+              >
+                {pageNumber}
+              </Link>
+            ),
+          )}
+
+          {pages[pages.length - 1] < totalPages ? (
+            <>
+              {pages[pages.length - 1] < totalPages - 1 ? (
+                <span className="px-1 text-muted" aria-hidden>
+                  …
+                </span>
+              ) : null}
+              <Link
+                href={pageHref(filters, totalPages)}
+                prefetch
+                onClick={(event) =>
+                  onNavigate(event, pageHref(filters, totalPages))
+                }
+                className={linkClass}
+                aria-disabled={isPending}
+                tabIndex={isPending ? -1 : undefined}
+              >
+                {totalPages}
+              </Link>
+            </>
+          ) : null}
+
+          {page < totalPages ? (
             <Link
-              href={pageHref(filters, totalPages)}
+              href={pageHref(filters, page + 1)}
               prefetch
               onClick={(event) =>
-                onNavigate(event, pageHref(filters, totalPages))
+                onNavigate(event, pageHref(filters, page + 1))
               }
               className={linkClass}
               aria-disabled={isPending}
               tabIndex={isPending ? -1 : undefined}
             >
-              {totalPages}
+              Next
             </Link>
-          </>
-        ) : null}
-
-        {page < totalPages ? (
-          <Link
-            href={pageHref(filters, page + 1)}
-            prefetch
-            onClick={(event) =>
-              onNavigate(event, pageHref(filters, page + 1))
-            }
-            className={linkClass}
-            aria-disabled={isPending}
-            tabIndex={isPending ? -1 : undefined}
-          >
-            Next
-          </Link>
-        ) : (
-          <span className={disabledClass}>Next</span>
-        )}
-      </div>
+          ) : (
+            <span className={disabledClass}>Next</span>
+          )}
+        </div>
+      ) : null}
     </nav>
   );
 }

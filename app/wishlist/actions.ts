@@ -31,6 +31,7 @@ export async function addToWishlistAction(
   }
 
   revalidatePath("/wishlist");
+  revalidatePath("/deals");
   return { ok: true };
 }
 
@@ -44,5 +45,6 @@ export async function removeFromWishlistAction(
 
   await removeWishlistItem(userId, igdbId);
   revalidatePath("/wishlist");
+  revalidatePath("/deals");
   return { ok: true };
 }

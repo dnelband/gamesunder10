@@ -42,9 +42,3 @@ export function DealFiltersSkeleton() {
     />
   );
 }
-
-export function DealsSummarySkeleton() {
-  return (
-    <div className="h-4 w-28 animate-pulse rounded bg-surface-2" aria-hidden />
-  );
-}

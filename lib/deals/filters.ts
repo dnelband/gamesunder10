@@ -2,6 +2,7 @@ import {
   FILTER_PLATFORMS,
   type FilterPlatform,
 } from "@/lib/deals/platforms";
+import { effectiveSearchQuery } from "@/lib/search-query";
 
 export { FILTER_PLATFORMS };
 
@@ -36,7 +37,9 @@ export function parseDealFilters(
   searchParams: Record<string, string | string[] | undefined>,
 ): DealListFilters {
   const qRaw = searchParams.q;
-  const q = (Array.isArray(qRaw) ? qRaw[0] : qRaw)?.trim() ?? "";
+  const q = effectiveSearchQuery(
+    Array.isArray(qRaw) ? qRaw[0] : qRaw,
+  );
 
   const platforms = asStringArray(searchParams.platform).filter(isFilterPlatform);
 

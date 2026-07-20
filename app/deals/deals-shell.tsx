@@ -11,7 +11,6 @@ interface DealsShellProps {
   initialFilters: DealListFilters;
   availableGenres: string[];
   availablePlatforms: string[];
-  summary: ReactNode;
   children: ReactNode;
 }
 
@@ -19,7 +18,6 @@ function DealsShellInner({
   initialFilters,
   availableGenres,
   availablePlatforms,
-  summary,
   children,
 }: DealsShellProps) {
   const { isPending } = useDealsNav();
@@ -30,7 +28,6 @@ function DealsShellInner({
         initialFilters={initialFilters}
         availableGenres={availableGenres}
         availablePlatforms={availablePlatforms}
-        summary={summary}
       />
 
       <div
