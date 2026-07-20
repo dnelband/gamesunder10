@@ -69,10 +69,11 @@ Ops pages live under `/admin` (status, stores, implementation checklist). They a
 ```bash
 pnpm test
 pnpm test:watch
+pnpm test:coverage
 pnpm lint
 ```
 
-Unit tests run with **Vitest** (`lib/**/*.test.ts`). `pnpm install` enables a Husky **pre-commit** hook that runs `pnpm lint && pnpm test`. GitHub Actions CI runs the same lint + test + `tsc --noEmit` checks on push/PR.
+Unit tests run with **Vitest** (`lib/**/*.test.ts`). `pnpm test:coverage` fails if total **statements** coverage drops below **80%**. `pnpm install` enables a Husky **pre-commit** hook that runs `pnpm lint && pnpm test`. GitHub Actions CI runs lint + coverage + `tsc --noEmit` on push/PR.
 
 ## Deploy
 

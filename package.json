@@ -17,6 +17,7 @@
     "cron:local-once": "bash scripts/run-local-cron.sh",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "smoke:store-urls": "npx tsx --env-file=.env.local scripts/smoke-store-urls.ts",
     "prepare": "husky"
   },
