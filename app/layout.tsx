@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
-import Link from "next/link";
-
-import { BrandWordmark } from "@/components/brand-wordmark";
 import { clsx } from "clsx";
+
+import { SiteFooter } from "@/components/site-footer";
+import { APP_VERSION } from "@/lib/app-version";
+import { loadChangelogReleases } from "@/lib/changelog";
 
 import "./globals.css";
 
@@ -32,6 +33,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const releases = loadChangelogReleases();
+
   return (
     <html
       lang="en"
@@ -39,17 +42,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col bg-bg font-sans text-fg">
         <div className="flex flex-1 flex-col">{children}</div>
-        <footer className="border-t border-stroke">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-8 sm:flex-row sm:items-end sm:justify-between sm:px-6">
-            <div className="flex flex-col gap-1">
-              <Link href="/deals" className="w-fit">
-                <BrandWordmark size="sm" />
-              </Link>
-              <p className="text-sm text-muted">Broke. Still gaming.</p>
-            </div>
-            <p className="text-xs text-muted">Deals under €10 · PC &amp; console</p>
-          </div>
-        </footer>
+        <SiteFooter version={APP_VERSION} releases={releases} />
       </body>
     </html>
   );

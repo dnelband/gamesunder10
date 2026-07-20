@@ -1,6 +1,6 @@
 # Broke Gamer
 
-Next.js 16 site that aggregates current game deals **under €10** across PC storefronts (CheapShark) and console storefronts (PSN, Xbox; more sources as they land). Prices are normalized to EUR at ingestion time. Deal data lives in Postgres; rich metadata is enriched from IGDB during cron, not on every page view.
+**v1.0.0** — Next.js 16 site that aggregates current game deals **under €10** across PC storefronts (CheapShark) and console storefronts (PSN, Xbox; more sources as they land). Prices are normalized to EUR at ingestion time. Deal data lives in Postgres; rich metadata is enriched from IGDB during cron, not on every page view.
 
 > The npm package / repo folder may still say `gamesunder10` — that is the old project name. The product is **Broke Gamer**.
 
@@ -74,6 +74,32 @@ pnpm lint
 ```
 
 Unit tests run with **Vitest** (`lib/**/*.test.ts`). `pnpm test:coverage` fails if total **statements** coverage drops below **80%**. `pnpm typecheck` runs `next typegen` then `tsc` (needed so `PageProps` route types exist). `pnpm install` enables a Husky **pre-commit** hook that runs `pnpm lint && pnpm test`. GitHub Actions CI runs lint + coverage + typecheck on push/PR.
+
+## Versioning
+
+Versions are bumped **automatically** by [release-please](https://github.com/googleapis/release-please) from [Conventional Commits](https://www.conventionalcommits.org/) on `main`.
+
+| Commit prefix | Bump |
+| --- | --- |
+| `fix:` | patch (`1.0.0` → `1.0.1`) |
+| `feat:` | minor (`1.0.0` → `1.1.0`) |
+| `feat!:` / `BREAKING CHANGE:` | major (`1.0.0` → `2.0.0`) |
+
+**Flow:** merge feature PRs with conventional commit messages → release-please opens a **Release PR** that updates `package.json`, `CHANGELOG.md`, and the manifest → merge that PR → GitHub Release + `v*` tag are created. The site footer reads those files, so the new version shows after deploy.
+
+Examples:
+
+```bash
+git commit -m "fix: modal close uses pointer cursor"
+git commit -m "feat: wishlist empty-state suggestions"
+git commit -m "feat!: drop ebay source"
+```
+
+Do **not** hand-edit the version in `package.json` for normal releases.
+
+## Git workflow
+
+Work on a feature branch and merge to `main` via pull request. Protect `main` in GitHub (**Settings → Branches** / **Rules**) so direct pushes are blocked and CI must pass before merge.
 
 ## Deploy
 

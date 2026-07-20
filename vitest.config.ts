@@ -16,6 +16,8 @@ export default defineConfig({
         "lib/format-rating.ts",
         "lib/pricing.ts",
         "lib/search-query.ts",
+        "lib/app-version.ts",
+        "lib/changelog.ts",
         "lib/cron/auth.ts",
         "lib/db/database-url.ts",
         "lib/db/source-health.ts",
