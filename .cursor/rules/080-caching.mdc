@@ -38,8 +38,8 @@ Three data tiers, three owners. Don't collapse them into one cache layer.
   screenshots onto each deal row. Source-provided genres/rating win over IGDB.
 - Pages read enrichment from Postgres only. No live IGDB on `/deals` or
   `/deals/[id]`.
-- `getGameMetadataForSteamAppIds()` in `get-game-metadata.ts` stays for future
-  features outside the deals dataset (e.g. wishlist). Uses Next `use cache`.
+- Wishlist search (`igdb-wishlist-search.ts`) is separate from deal enrichment —
+  live IGDB with Next `use cache`, not Postgres deal rows.
 - IGDB OAuth tokens are **process-memory** only (`lib/enrichment/igdb-auth.ts`).
 
 ## Composition rules

@@ -1,23 +1,5 @@
 import type { RatingSource } from "@/types/deal";
 
-export function formatRatingLabel(
-  rating: number,
-  source: RatingSource,
-): string {
-  const value = Math.round(rating);
-
-  switch (source) {
-    case "steam":
-      return `${value}% positive`;
-    case "metacritic":
-    case "igdb":
-    case "store":
-      return `${value}`;
-    default:
-      return `${value}`;
-  }
-}
-
 /** Compact display for card badges (no source name, minimal suffix). */
 export function formatRatingBadgeValue(
   rating: number,
