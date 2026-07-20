@@ -10,9 +10,9 @@ export async function runWishlistNotificationsSafe(): Promise<
   try {
     const result = await notifyWishlistDealMatches();
     if (result.skippedReason) {
-      console.info("[wishlist-notify] skipped:", result.skippedReason);
+      console.warn("[wishlist-notify] skipped:", result.skippedReason);
     } else if (result.scanned > 0 || result.notified > 0) {
-      console.info("[wishlist-notify]", result);
+      console.warn("[wishlist-notify]", result);
     }
     return result;
   } catch (err) {

@@ -11,13 +11,14 @@ import { GenreTags, WishlistSuggestionTitleRow } from "@/app/wishlist/wishlist-s
 import type { IgdbSearchCandidate } from "@/lib/enrichment/igdb-wishlist-search";
 import { igdbGamePageUrl } from "@/lib/enrichment/igdb-client";
 
-export function EmptyDealsWishlistSuggestions({
-  suggestions,
-  wishlistedIgdbIds,
-}: {
-  suggestions: IgdbSearchCandidate[];
-  wishlistedIgdbIds: number[];
-}) {
+function toggleButtonLabel(isBusy: boolean, isWishlisted: boolean): string {
+  if (isBusy) {
+    return isWishlisted ? "Removing..." : "Adding...";
+  }
+  return isWishlisted ? "Remove" : "Add";
+}
+
+function useWishlistSuggestionToggle(wishlistedIgdbIds: number[]) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -85,6 +86,66 @@ export function EmptyDealsWishlistSuggestions({
     });
   }
 
+  return { error, busyId, wishlistedIds, onAdd, onRemove };
+}
+
+function SuggestionListItem({
+  candidate,
+  isWishlisted,
+  isBusy,
+  onAdd,
+  onRemove,
+}: {
+  candidate: IgdbSearchCandidate;
+  isWishlisted: boolean;
+  isBusy: boolean;
+  onAdd: (candidate: IgdbSearchCandidate) => void;
+  onRemove: (igdbId: number) => void;
+}) {
+  return (
+    <li className="flex items-center gap-3 px-3 py-3">
+      <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded bg-surface-2">
+        {candidate.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- IGDB CDN
+          <img
+            src={candidate.coverUrl}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : null}
+      </div>
+      <div className="min-w-0 flex-1">
+        <WishlistSuggestionTitleRow
+          title={candidate.title}
+          releaseDate={candidate.releaseDate}
+          href={igdbGamePageUrl(candidate)}
+        />
+        <GenreTags genres={candidate.genres} />
+      </div>
+      <button
+        type="button"
+        onClick={() =>
+          isWishlisted ? onRemove(candidate.igdbId) : onAdd(candidate)
+        }
+        disabled={isBusy}
+        className="shrink-0 cursor-pointer rounded-md border border-stroke px-3 py-1.5 text-xs font-semibold text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {toggleButtonLabel(isBusy, isWishlisted)}
+      </button>
+    </li>
+  );
+}
+
+export function EmptyDealsWishlistSuggestions({
+  suggestions,
+  wishlistedIgdbIds,
+}: {
+  suggestions: IgdbSearchCandidate[];
+  wishlistedIgdbIds: number[];
+}) {
+  const { error, busyId, wishlistedIds, onAdd, onRemove } =
+    useWishlistSuggestionToggle(wishlistedIgdbIds);
+
   if (suggestions.length === 0) {
     return null;
   }
@@ -103,54 +164,16 @@ export function EmptyDealsWishlistSuggestions({
       ) : null}
 
       <ul className="mt-4 divide-y divide-stroke overflow-hidden rounded-lg border border-stroke bg-bg">
-        {suggestions.map((candidate) => {
-          const isWishlisted = wishlistedIds.has(candidate.igdbId);
-          const isBusy = busyId === candidate.igdbId;
-
-          return (
-            <li
-              key={candidate.igdbId}
-              className="flex items-center gap-3 px-3 py-3"
-            >
-              <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded bg-surface-2">
-                {candidate.coverUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- IGDB CDN
-                  <img
-                    src={candidate.coverUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                ) : null}
-              </div>
-              <div className="min-w-0 flex-1">
-                <WishlistSuggestionTitleRow
-                  title={candidate.title}
-                  releaseDate={candidate.releaseDate}
-                  href={igdbGamePageUrl(candidate)}
-                />
-                <GenreTags genres={candidate.genres} />
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  isWishlisted
-                    ? onRemove(candidate.igdbId)
-                    : onAdd(candidate)
-                }
-                disabled={isBusy}
-                className="shrink-0 cursor-pointer rounded-md border border-stroke px-3 py-1.5 text-xs font-semibold text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isBusy
-                  ? isWishlisted
-                    ? "Removing..."
-                    : "Adding..."
-                  : isWishlisted
-                    ? "Remove"
-                    : "Add"}
-              </button>
-            </li>
-          );
-        })}
+        {suggestions.map((candidate) => (
+          <SuggestionListItem
+            key={candidate.igdbId}
+            candidate={candidate}
+            isWishlisted={wishlistedIds.has(candidate.igdbId)}
+            isBusy={busyId === candidate.igdbId}
+            onAdd={onAdd}
+            onRemove={onRemove}
+          />
+        ))}
       </ul>
     </div>
   );

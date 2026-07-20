@@ -54,6 +54,38 @@ function storeRating(product: EmeraldProductSummary): {
   };
 }
 
+interface XboxPurchase {
+  priceEur: number;
+  originalPriceEur: number;
+  discountPercent: number;
+}
+
+/** Validates and extracts pricing, or null if this product isn't a purchasable EUR deal within budget. */
+function resolveXboxPurchase(product: EmeraldProductSummary): XboxPurchase | null {
+  const purchase = product.specificPrices?.purchaseable?.[0];
+  if (!purchase) {
+    return null;
+  }
+  if (purchase.currency !== "EUR") {
+    return null;
+  }
+
+  const priceEur = purchase.listPrice;
+  if (priceEur <= 0 || priceEur > XBOX_MAX_PRICE_EUR) {
+    return null;
+  }
+
+  return {
+    priceEur,
+    originalPriceEur: purchase.msrp > 0 ? purchase.msrp : priceEur,
+    discountPercent: Math.round(purchase.discountPercentage ?? 0),
+  };
+}
+
+function xboxDescription(product: EmeraldProductSummary): string | null {
+  return product.shortDescription ?? product.description ?? null;
+}
+
 export function normalizeXboxProduct(
   product: EmeraldProductSummary,
 ): NormalizedDeal | null {
@@ -61,15 +93,8 @@ export function normalizeXboxProduct(
     return null;
   }
 
-  const purchase = product.specificPrices?.purchaseable?.[0];
-  if (!purchase || purchase.currency !== "EUR") {
-    return null;
-  }
-
-  const priceEur = purchase.listPrice;
-  const originalPriceEur = purchase.msrp;
-
-  if (priceEur <= 0 || priceEur > XBOX_MAX_PRICE_EUR) {
+  const purchase = resolveXboxPurchase(product);
+  if (!purchase) {
     return null;
   }
 
@@ -79,7 +104,6 @@ export function normalizeXboxProduct(
   }
 
   const { rating, ratingSource } = storeRating(product);
-  const discountPercent = Math.round(purchase.discountPercentage ?? 0);
   const imageUrl = normalizeImageUrl(product.images?.poster?.url);
 
   return {
@@ -90,10 +114,9 @@ export function normalizeXboxProduct(
     steamAppId: null,
     externalStoreUid: product.productId,
     storeName: "Xbox Store",
-    priceEur,
-    originalPriceEur:
-      originalPriceEur > 0 ? originalPriceEur : priceEur,
-    discountPercent,
+    priceEur: purchase.priceEur,
+    originalPriceEur: purchase.originalPriceEur,
+    discountPercent: purchase.discountPercent,
     currencyOriginal: "EUR",
     url: buildXboxStoreUrl(product.title, product.productId),
     imageUrl,
@@ -104,7 +127,7 @@ export function normalizeXboxProduct(
     platforms,
     rating,
     ratingSource,
-    description: product.shortDescription ?? product.description ?? null,
+    description: xboxDescription(product),
     coverUrl: imageUrl,
     screenshotUrls: [],
     fetchedAt: new Date().toISOString(),

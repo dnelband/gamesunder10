@@ -7,7 +7,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import type { GameMetadata } from "@/types/enrichment";
 
-import { getIgdbAccessToken, getIgdbClientId } from "./igdb-auth";
+import { getIgdbClientId } from "./igdb-auth";
 import { fetchGameMetadataBatchFromIgdb } from "./igdb-client";
 
 async function getCachedGameMetadataForSteamAppIds(

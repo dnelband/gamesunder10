@@ -8,6 +8,7 @@ import {
   filtersToSearchParams,
   type DealListFilters,
 } from "@/lib/deals/filters";
+import { cn } from "@/lib/cn";
 import { effectiveSearchQuery } from "@/lib/search-query";
 
 import { useDealsNav } from "./deals-nav";
@@ -63,9 +64,10 @@ function ChevronDown({ open }: { open: boolean }) {
       strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={`size-3.5 shrink-0 text-muted transition-transform duration-150 ${
-        open ? "rotate-180" : ""
-      }`}
+      className={cn(
+        "size-3.5 shrink-0 text-muted transition-transform duration-150",
+        open && "rotate-180",
+      )}
       aria-hidden
     >
       <path d="M4 6l4 4 4-4" />
@@ -116,11 +118,12 @@ function FilterDropdown({
       <button
         type="button"
         onClick={onToggle}
-        className={`inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors ${
+        className={cn(
+          "inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors",
           open
             ? "border-accent bg-surface text-fg"
-            : "border-stroke bg-surface text-muted hover:border-muted hover:text-fg"
-        }`}
+            : "border-stroke bg-surface text-muted hover:border-muted hover:text-fg",
+        )}
         aria-expanded={open}
       >
         {label}
@@ -136,40 +139,242 @@ function FilterDropdown({
   );
 }
 
-export function DealFilters({
-  initialFilters,
+type OpenDropdown = "platforms" | "genres" | "rating" | null;
+
+function PlatformsDropdown({
+  platformChoices,
+  filters,
+  open,
+  onToggle,
+  onUpdate,
+}: {
+  platformChoices: string[];
+  filters: DealListFilters;
+  open: boolean;
+  onToggle: () => void;
+  onUpdate: (partial: Partial<DealListFilters>) => void;
+}) {
+  return (
+    <FilterDropdown
+      label={filterTriggerLabel("Platforms", filters.platforms.length)}
+      open={open}
+      onToggle={onToggle}
+    >
+      <fieldset className="flex max-h-56 flex-col gap-2 overflow-y-auto">
+        <legend className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+          Platforms
+        </legend>
+        {platformChoices.map((platform) => (
+          <label
+            key={platform}
+            className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-fg hover:bg-surface-2"
+          >
+            <input
+              type="checkbox"
+              checked={filters.platforms.includes(platform)}
+              onChange={() =>
+                onUpdate({
+                  platforms: toggleValue(filters.platforms, platform),
+                })
+              }
+            />
+            {platform}
+          </label>
+        ))}
+      </fieldset>
+    </FilterDropdown>
+  );
+}
+
+function GenresDropdown({
   availableGenres,
-  availablePlatforms,
-}: DealFiltersProps) {
-  const { navigate, isPending } = useDealsNav();
+  filters,
+  open,
+  onToggle,
+  onUpdate,
+}: {
+  availableGenres: string[];
+  filters: DealListFilters;
+  open: boolean;
+  onToggle: () => void;
+  onUpdate: (partial: Partial<DealListFilters>) => void;
+}) {
+  return (
+    <FilterDropdown
+      label={filterTriggerLabel("Genres", filters.genres.length)}
+      open={open}
+      onToggle={onToggle}
+    >
+      <fieldset className="flex max-h-56 flex-col gap-2 overflow-y-auto">
+        <legend className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+          Genres
+        </legend>
+        {availableGenres.map((genre) => (
+          <label
+            key={genre}
+            className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-fg hover:bg-surface-2"
+          >
+            <input
+              type="checkbox"
+              checked={filters.genres.includes(genre)}
+              onChange={() =>
+                onUpdate({ genres: toggleValue(filters.genres, genre) })
+              }
+            />
+            {genre}
+          </label>
+        ))}
+      </fieldset>
+    </FilterDropdown>
+  );
+}
+
+function RatingDropdown({
+  filters,
+  ratingLabel,
+  open,
+  onToggle,
+  onUpdate,
+}: {
+  filters: DealListFilters;
+  ratingLabel: string | null;
+  open: boolean;
+  onToggle: () => void;
+  onUpdate: (partial: Partial<DealListFilters>) => void;
+}) {
+  return (
+    <FilterDropdown
+      label={filterTriggerLabel("Rating", 0, ratingLabel)}
+      open={open}
+      onToggle={onToggle}
+    >
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
+          Minimum rating
+        </legend>
+        {RATING_OPTIONS.map((option) => (
+          <label
+            key={option.label}
+            className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-fg hover:bg-surface-2"
+          >
+            <input
+              type="radio"
+              name="minRating"
+              checked={filters.minRating === option.value}
+              onChange={() => onUpdate({ minRating: option.value })}
+            />
+            {option.label}
+          </label>
+        ))}
+      </fieldset>
+    </FilterDropdown>
+  );
+}
+
+function ActiveFilterPills({
+  filters,
+  ratingLabel,
+  onClearSearch,
+  onRemovePlatform,
+  onRemoveGenre,
+  onRemoveRating,
+  onRemoveStore,
+  onClearAll,
+}: {
+  filters: DealListFilters;
+  ratingLabel: string | null;
+  onClearSearch: () => void;
+  onRemovePlatform: (platform: string) => void;
+  onRemoveGenre: (genre: string) => void;
+  onRemoveRating: () => void;
+  onRemoveStore: () => void;
+  onClearAll: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {filters.q ? (
+        <button
+          type="button"
+          onClick={onClearSearch}
+          className="rounded-md border border-accent bg-accent px-3 py-1.5 text-xs font-medium text-fg"
+        >
+          Search: {filters.q} ×
+        </button>
+      ) : null}
+      {filters.platforms.map((platform) => (
+        <button
+          key={platform}
+          type="button"
+          onClick={() => onRemovePlatform(platform)}
+          className="rounded-md border border-stroke bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg"
+        >
+          {platform} ×
+        </button>
+      ))}
+      {filters.genres.map((genre) => (
+        <button
+          key={genre}
+          type="button"
+          onClick={() => onRemoveGenre(genre)}
+          className="rounded-md border border-stroke bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg"
+        >
+          {genre} ×
+        </button>
+      ))}
+      {filters.minRating !== null ? (
+        <button
+          type="button"
+          onClick={onRemoveRating}
+          className="rounded-md border border-stroke bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg"
+        >
+          Rating: {ratingLabel} ×
+        </button>
+      ) : null}
+      {filters.store ? (
+        <button
+          type="button"
+          onClick={onRemoveStore}
+          className="rounded-md border border-stroke bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg"
+        >
+          Store: {filters.store} ×
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={onClearAll}
+        className="rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-muted hover:text-fg"
+      >
+        Clear all
+      </button>
+    </div>
+  );
+}
+
+function useDealFiltersState(initialFilters: DealListFilters) {
+  const { navigate } = useDealsNav();
   const [filters, setFilters] = useState(initialFilters);
   const [searchText, setSearchText] = useState(initialFilters.q);
-  const [openDropdown, setOpenDropdown] = useState<
-    "platforms" | "genres" | "rating" | null
-  >(null);
   const filtersRef = useRef(filters);
-  filtersRef.current = filters;
 
   useEffect(() => {
-    setFilters(initialFilters);
-    setSearchText(initialFilters.q);
-  }, [
+    filtersRef.current = filters;
+  }, [filters]);
+
+  // Adjust state during render when the URL hands us new filters (stable key),
+  // rather than syncing via an effect.
+  const initialKey = [
     initialFilters.q,
-    initialFilters.minRating,
-    // Stable string deps so URL sync doesn't loop on new object identity.
+    initialFilters.minRating ?? "",
     initialFilters.platforms.join(","),
     initialFilters.genres.join(","),
-  ]);
-
-  const platformChoices = useMemo(() => {
-    const fromDb = availablePlatforms.filter((platform) =>
-      (FILTER_PLATFORMS as readonly string[]).includes(platform),
-    );
-    return fromDb.length > 0 ? fromDb : [...FILTER_PLATFORMS];
-  }, [availablePlatforms]);
-
-  const activeCount = countActiveFilters(filters);
-  const ratingLabel = selectedRatingLabel(filters.minRating);
+    initialFilters.store ?? "",
+  ].join("|");
+  const [prevInitialKey, setPrevInitialKey] = useState(initialKey);
+  if (initialKey !== prevInitialKey) {
+    setPrevInitialKey(initialKey);
+    setFilters(initialFilters);
+    setSearchText(initialFilters.q);
+  }
 
   function applyFilters(next: DealListFilters) {
     setFilters(next);
@@ -215,176 +420,135 @@ export function DealFilters({
     update({ genres: filters.genres.filter((value) => value !== genre) });
   }
 
+  return {
+    filters,
+    searchText,
+    setSearchText,
+    update,
+    onClear,
+    removePlatform,
+    removeGenre,
+  };
+}
+
+function SearchAndDropdownsRow({
+  searchText,
+  onSearchTextChange,
+  platformChoices,
+  availableGenres,
+  filters,
+  ratingLabel,
+  onUpdate,
+}: {
+  searchText: string;
+  onSearchTextChange: (value: string) => void;
+  platformChoices: string[];
+  availableGenres: string[];
+  filters: DealListFilters;
+  ratingLabel: string | null;
+  onUpdate: (partial: Partial<DealListFilters>) => void;
+}) {
+  const [openDropdown, setOpenDropdown] = useState<OpenDropdown>(null);
+
+  function toggleDropdown(value: NonNullable<OpenDropdown>) {
+    setOpenDropdown((current) => (current === value ? null : value));
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <input
+        type="search"
+        name="q"
+        value={searchText}
+        onChange={(event) => onSearchTextChange(event.target.value)}
+        placeholder="Search game title"
+        aria-label="Search game title"
+        className="h-10 min-w-[12rem] flex-1 rounded-md border border-stroke bg-bg px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent"
+      />
+
+      <PlatformsDropdown
+        platformChoices={platformChoices}
+        filters={filters}
+        open={openDropdown === "platforms"}
+        onToggle={() => toggleDropdown("platforms")}
+        onUpdate={onUpdate}
+      />
+
+      {availableGenres.length > 0 ? (
+        <GenresDropdown
+          availableGenres={availableGenres}
+          filters={filters}
+          open={openDropdown === "genres"}
+          onToggle={() => toggleDropdown("genres")}
+          onUpdate={onUpdate}
+        />
+      ) : null}
+
+      <RatingDropdown
+        filters={filters}
+        ratingLabel={ratingLabel}
+        open={openDropdown === "rating"}
+        onToggle={() => toggleDropdown("rating")}
+        onUpdate={onUpdate}
+      />
+    </div>
+  );
+}
+
+export function DealFilters({
+  initialFilters,
+  availableGenres,
+  availablePlatforms,
+}: DealFiltersProps) {
+  const { isPending } = useDealsNav();
+  const {
+    filters,
+    searchText,
+    setSearchText,
+    update,
+    onClear,
+    removePlatform,
+    removeGenre,
+  } = useDealFiltersState(initialFilters);
+
+  const platformChoices = useMemo(() => {
+    const fromDb = availablePlatforms.filter((platform) =>
+      (FILTER_PLATFORMS as readonly string[]).includes(platform),
+    );
+    return fromDb.length > 0 ? fromDb : [...FILTER_PLATFORMS];
+  }, [availablePlatforms]);
+
+  const activeCount = countActiveFilters(filters);
+  const ratingLabel = selectedRatingLabel(filters.minRating);
+
   return (
     <section className="flex flex-col gap-3" aria-busy={isPending}>
       <div className="rounded-lg border border-stroke bg-surface px-4 py-4">
         <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="search"
-              name="q"
-              value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-              placeholder="Search game title"
-              aria-label="Search game title"
-              className="h-10 min-w-[12rem] flex-1 rounded-md border border-stroke bg-bg px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent"
-            />
-
-            <FilterDropdown
-              label={filterTriggerLabel("Platforms", filters.platforms.length)}
-              open={openDropdown === "platforms"}
-              onToggle={() =>
-                setOpenDropdown((value) =>
-                  value === "platforms" ? null : "platforms",
-                )
-              }
-            >
-              <fieldset className="flex max-h-56 flex-col gap-2 overflow-y-auto">
-                <legend className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
-                  Platforms
-                </legend>
-                {platformChoices.map((platform) => (
-                  <label
-                    key={platform}
-                    className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-fg hover:bg-surface-2"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={filters.platforms.includes(platform)}
-                      onChange={() =>
-                        update({
-                          platforms: toggleValue(filters.platforms, platform),
-                        })
-                      }
-                    />
-                    {platform}
-                  </label>
-                ))}
-              </fieldset>
-            </FilterDropdown>
-
-            {availableGenres.length > 0 ? (
-              <FilterDropdown
-                label={filterTriggerLabel("Genres", filters.genres.length)}
-                open={openDropdown === "genres"}
-                onToggle={() =>
-                  setOpenDropdown((value) => (value === "genres" ? null : "genres"))
-                }
-              >
-                <fieldset className="flex max-h-56 flex-col gap-2 overflow-y-auto">
-                  <legend className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
-                    Genres
-                  </legend>
-                  {availableGenres.map((genre) => (
-                    <label
-                      key={genre}
-                      className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-fg hover:bg-surface-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={filters.genres.includes(genre)}
-                        onChange={() =>
-                          update({
-                            genres: toggleValue(filters.genres, genre),
-                          })
-                        }
-                      />
-                      {genre}
-                    </label>
-                  ))}
-                </fieldset>
-              </FilterDropdown>
-            ) : null}
-
-            <FilterDropdown
-              label={filterTriggerLabel("Rating", 0, ratingLabel)}
-              open={openDropdown === "rating"}
-              onToggle={() =>
-                setOpenDropdown((value) => (value === "rating" ? null : "rating"))
-              }
-            >
-              <fieldset className="flex flex-col gap-2">
-                <legend className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted">
-                  Minimum rating
-                </legend>
-                {RATING_OPTIONS.map((option) => (
-                  <label
-                    key={option.label}
-                    className="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-fg hover:bg-surface-2"
-                  >
-                    <input
-                      type="radio"
-                      name="minRating"
-                      checked={filters.minRating === option.value}
-                      onChange={() => update({ minRating: option.value })}
-                    />
-                    {option.label}
-                  </label>
-                ))}
-              </fieldset>
-            </FilterDropdown>
-          </div>
+          <SearchAndDropdownsRow
+            searchText={searchText}
+            onSearchTextChange={setSearchText}
+            platformChoices={platformChoices}
+            availableGenres={availableGenres}
+            filters={filters}
+            ratingLabel={ratingLabel}
+            onUpdate={update}
+          />
 
           {activeCount > 0 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {filters.q ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchText("");
-                    update({ q: "" });
-                  }}
-                  className="rounded-md border border-accent bg-accent px-3 py-1.5 text-xs font-medium text-fg"
-                >
-                  Search: {filters.q} ×
-                </button>
-              ) : null}
-              {filters.platforms.map((platform) => (
-                <button
-                  key={platform}
-                  type="button"
-                  onClick={() => removePlatform(platform)}
-                  className="rounded-md border border-stroke bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg"
-                >
-                  {platform} ×
-                </button>
-              ))}
-              {filters.genres.map((genre) => (
-                <button
-                  key={genre}
-                  type="button"
-                  onClick={() => removeGenre(genre)}
-                  className="rounded-md border border-stroke bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg"
-                >
-                  {genre} ×
-                </button>
-              ))}
-              {filters.minRating !== null ? (
-                <button
-                  type="button"
-                  onClick={() => update({ minRating: null })}
-                  className="rounded-md border border-stroke bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg"
-                >
-                  Rating: {ratingLabel} ×
-                </button>
-              ) : null}
-              {filters.store ? (
-                <button
-                  type="button"
-                  onClick={() => update({ store: null })}
-                  className="rounded-md border border-stroke bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg"
-                >
-                  Store: {filters.store} ×
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={onClear}
-                className="rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-muted hover:text-fg"
-              >
-                Clear all
-              </button>
-            </div>
+            <ActiveFilterPills
+              filters={filters}
+              ratingLabel={ratingLabel}
+              onClearSearch={() => {
+                setSearchText("");
+                update({ q: "" });
+              }}
+              onRemovePlatform={removePlatform}
+              onRemoveGenre={removeGenre}
+              onRemoveRating={() => update({ minRating: null })}
+              onRemoveStore={() => update({ store: null })}
+              onClearAll={onClear}
+            />
           ) : null}
         </div>
       </div>

@@ -3,6 +3,7 @@ import {
   formatRatingSourceLabel,
   getScoreBadgeClass,
 } from "@/lib/format-rating";
+import { cn } from "@/lib/cn";
 import type { RatingSource } from "@/types/deal";
 
 interface DealRatingProps {
@@ -22,7 +23,10 @@ export function DealRating({ rating, source }: DealRatingProps) {
       aria-label={`${value}${isSteam ? "" : " out of 100"} · ${sourceLabel}`}
     >
       <span
-        className={`flex h-14 min-w-14 items-center justify-center rounded-md px-2.5 font-display text-2xl font-bold tabular-nums leading-none tracking-tight ${getScoreBadgeClass(rating, source)}`}
+        className={cn(
+          "flex h-14 min-w-14 items-center justify-center rounded-md px-2.5 font-display text-2xl font-bold tabular-nums leading-none tracking-tight",
+          getScoreBadgeClass(rating, source),
+        )}
       >
         {value}
       </span>

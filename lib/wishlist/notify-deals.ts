@@ -110,14 +110,13 @@ async function resolveUserEmail(
   }
 }
 
-/**
- * After a successful deal sync: email users whose wishlist games now have
- * under-€10 deals (first match or a further price drop).
- *
- * No-ops when RESEND_API_KEY or SUPABASE_SERVICE_ROLE_KEY is missing so local
- * cron can run without mail config. Never throws — cron routes should stay green.
- */
-export async function notifyWishlistDealMatches(): Promise<WishlistNotifyResult> {
+interface NotifyMailConfig {
+  apiKey: string;
+  from: string;
+}
+
+/** Missing mail/service config means a no-op result, not an error — see doc comment below. */
+function resolveNotifyMailConfig(): NotifyMailConfig | WishlistNotifyResult {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from = process.env.RESEND_FROM_EMAIL?.trim();
 
@@ -141,89 +140,157 @@ export async function notifyWishlistDealMatches(): Promise<WishlistNotifyResult>
     };
   }
 
+  return { apiKey, from };
+}
+
+type NotifyOutcome =
+  | "notified"
+  | "noMatch"
+  | "alreadyNotifiedAtThisPrice"
+  | "missingUserEmail"
+  | "sendFailed";
+
+interface NotifyContext {
+  resend: Resend;
+  from: string;
+  base: string;
+  wishlistUrl: string;
+  emailCache: Map<string, string | null>;
+}
+
+async function sendWishlistDealEmail(
+  ctx: NotifyContext,
+  item: WishlistItem,
+  match: WishlistDealMatch,
+  email: string,
+): Promise<NotifyOutcome> {
+  const dealUrl = `${ctx.base}/deals/${encodeURIComponent(match.groupKey)}`;
+  const { error } = await ctx.resend.emails.send({
+    from: ctx.from,
+    to: email,
+    subject: `${match.title} is under €10 — ${formatPrice(match.minPriceEur)}`,
+    html: buildEmailHtml({
+      title: match.title,
+      priceEur: match.minPriceEur,
+      dealUrl,
+      wishlistUrl: ctx.wishlistUrl,
+    }),
+  });
+
+  if (error) {
+    console.error("[wishlist-notify] Resend error", error);
+    return "sendFailed";
+  }
+
+  await markWishlistNotified(item.id, match.minPriceEur);
+  return "notified";
+}
+
+async function processWishlistItem(
+  ctx: NotifyContext,
+  item: WishlistItem,
+): Promise<NotifyOutcome> {
+  try {
+    const { match } = await explainWishlistDealMatch({
+      steamAppId: item.steamAppId,
+      title: item.title,
+    });
+
+    if (!match) {
+      return "noMatch";
+    }
+    if (!shouldNotify(item, match)) {
+      return "alreadyNotifiedAtThisPrice";
+    }
+
+    const email = await resolveUserEmail(item.userId, ctx.emailCache);
+    if (!email) {
+      return "missingUserEmail";
+    }
+
+    return await sendWishlistDealEmail(ctx, item, match, email);
+  } catch (err) {
+    console.error("[wishlist-notify] item failed", item.id, err);
+    return "sendFailed";
+  }
+}
+
+interface NotifyCounts {
+  notified: number;
+  skipped: number;
+  errors: number;
+  noMatch: number;
+  alreadyNotifiedAtThisPrice: number;
+  missingUserEmail: number;
+  sendFailed: number;
+}
+
+function applyNotifyOutcome(counts: NotifyCounts, outcome: NotifyOutcome): void {
+  if (outcome === "notified") {
+    counts.notified += 1;
+    return;
+  }
+  if (outcome === "noMatch" || outcome === "alreadyNotifiedAtThisPrice") {
+    counts.skipped += 1;
+    counts[outcome] += 1;
+    return;
+  }
+  counts.errors += 1;
+  counts[outcome] += 1;
+}
+
+/**
+ * After a successful deal sync: email users whose wishlist games now have
+ * under-€10 deals (first match or a further price drop).
+ *
+ * No-ops when RESEND_API_KEY or SUPABASE_SERVICE_ROLE_KEY is missing so local
+ * cron can run without mail config. Never throws — cron routes should stay green.
+ */
+export async function notifyWishlistDealMatches(): Promise<WishlistNotifyResult> {
+  const mailConfig = resolveNotifyMailConfig();
+  if (!("apiKey" in mailConfig)) {
+    return mailConfig;
+  }
+
   const items = await listAllWishlistItems();
   if (items.length === 0) {
     return { scanned: 0, notified: 0, skipped: 0, errors: 0 };
   }
 
-  const resend = new Resend(apiKey);
   const base = siteBaseUrl();
-  const wishlistUrl = `${base}/wishlist`;
-  const emailCache = new Map<string, string | null>();
+  const ctx: NotifyContext = {
+    resend: new Resend(mailConfig.apiKey),
+    from: mailConfig.from,
+    base,
+    wishlistUrl: `${base}/wishlist`,
+    emailCache: new Map(),
+  };
 
-  let notified = 0;
-  let skipped = 0;
-  let errors = 0;
-  let noMatch = 0;
-  let alreadyNotifiedAtThisPrice = 0;
-  let missingUserEmail = 0;
-  let sendFailed = 0;
+  const counts: NotifyCounts = {
+    notified: 0,
+    skipped: 0,
+    errors: 0,
+    noMatch: 0,
+    alreadyNotifiedAtThisPrice: 0,
+    missingUserEmail: 0,
+    sendFailed: 0,
+  };
 
   for (const item of items) {
-    try {
-      const { match } = await explainWishlistDealMatch({
-        steamAppId: item.steamAppId,
-        title: item.title,
-      });
-
-      if (!match) {
-        skipped += 1;
-        noMatch += 1;
-        continue;
-      }
-
-      if (!shouldNotify(item, match)) {
-        skipped += 1;
-        alreadyNotifiedAtThisPrice += 1;
-        continue;
-      }
-
-      const email = await resolveUserEmail(item.userId, emailCache);
-      if (!email) {
-        errors += 1;
-        missingUserEmail += 1;
-        continue;
-      }
-
-      const dealUrl = `${base}/deals/${encodeURIComponent(match.groupKey)}`;
-      const { error } = await resend.emails.send({
-        from,
-        to: email,
-        subject: `${match.title} is under €10 — ${formatPrice(match.minPriceEur)}`,
-        html: buildEmailHtml({
-          title: match.title,
-          priceEur: match.minPriceEur,
-          dealUrl,
-          wishlistUrl,
-        }),
-      });
-
-      if (error) {
-        console.error("[wishlist-notify] Resend error", error);
-        errors += 1;
-        sendFailed += 1;
-        continue;
-      }
-
-      await markWishlistNotified(item.id, match.minPriceEur);
-      notified += 1;
-    } catch (err) {
-      console.error("[wishlist-notify] item failed", item.id, err);
-      errors += 1;
-      sendFailed += 1;
-    }
+    const outcome = await processWishlistItem(ctx, item);
+    applyNotifyOutcome(counts, outcome);
   }
 
   return {
     scanned: items.length,
-    notified,
-    skipped,
-    errors,
+    notified: counts.notified,
+    skipped: counts.skipped,
+    errors: counts.errors,
     detail: {
-      noMatch,
-      alreadyNotifiedAtThisPrice,
-      missingUserEmail,
-      sendFailed,
+      noMatch: counts.noMatch,
+      alreadyNotifiedAtThisPrice: counts.alreadyNotifiedAtThisPrice,
+      missingUserEmail: counts.missingUserEmail,
+      sendFailed: counts.sendFailed,
     },
   };
 }

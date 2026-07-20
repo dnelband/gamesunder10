@@ -96,6 +96,49 @@ function resolveStoreId(input: CheapsharkUrlInput): string | null {
   );
 }
 
+type ProductUrlBuilder = (input: CheapsharkUrlInput) => string | null;
+
+/** One builder per CheapShark storeID — keeps each store's slug rule isolated. */
+const PRODUCT_URL_BUILDERS: Record<string, ProductUrlBuilder> = {
+  "1": (input) => {
+    const steamAppId = validSteamAppId(input.steamAppId);
+    return steamAppId
+      ? `https://store.steampowered.com/app/${steamAppId}`
+      : null;
+  },
+  "2": (input) => {
+    const slug = titleToHyphenSlug(input.title);
+    return slug ? `https://www.gamersgate.com/product/${slug}/` : null;
+  },
+  "3": (input) => {
+    const slug = titleToGmgSlug(input.title);
+    return slug ? `https://www.greenmangaming.com/games/${slug}/` : null;
+  },
+  "7": (input) => {
+    const slug = titleToGogSlug(input.title);
+    return slug ? `https://www.gog.com/en/game/${slug}` : null;
+  },
+  // Humble Store
+  "11": (input) => {
+    const slug = titleToHyphenSlug(input.title);
+    return slug ? `https://www.humblebundle.com/store/${slug}` : null;
+  },
+  // Fanatical
+  "15": (input) => {
+    const slug = titleToHyphenSlug(input.title);
+    return slug ? `https://www.fanatical.com/en/game/${slug}` : null;
+  },
+  // GameBillet — root path slug (not /games/…)
+  "23": (input) => {
+    const slug = titleToHyphenSlug(input.title);
+    return slug ? `https://www.gamebillet.com/${slug}` : null;
+  },
+  "25": (input) => {
+    const slug = titleToEpicSlug(input.title);
+    return slug ? `https://store.epicgames.com/p/${slug}?lang=de` : null;
+  },
+};
+
 /**
  * Build a product URL for a CheapShark store deal, or null if we cannot.
  */
@@ -107,102 +150,28 @@ export function buildCheapsharkProductUrl(
     return null;
   }
 
-  switch (storeId) {
-    case "1": {
-      const steamAppId = validSteamAppId(input.steamAppId);
-      if (!steamAppId) {
-        return null;
-      }
-      return {
-        storeId,
-        kind: "product",
-        url: `https://store.steampowered.com/app/${steamAppId}`,
-      };
-    }
-    case "2": {
-      const slug = titleToHyphenSlug(input.title);
-      if (!slug) {
-        return null;
-      }
-      return {
-        storeId,
-        kind: "product",
-        url: `https://www.gamersgate.com/product/${slug}/`,
-      };
-    }
-    case "3": {
-      const slug = titleToGmgSlug(input.title);
-      if (!slug) {
-        return null;
-      }
-      return {
-        storeId,
-        kind: "product",
-        url: `https://www.greenmangaming.com/games/${slug}/`,
-      };
-    }
-    case "7": {
-      const slug = titleToGogSlug(input.title);
-      if (!slug) {
-        return null;
-      }
-      return {
-        storeId,
-        kind: "product",
-        url: `https://www.gog.com/en/game/${slug}`,
-      };
-    }
-    case "11": {
-      // Humble Store
-      const slug = titleToHyphenSlug(input.title);
-      if (!slug) {
-        return null;
-      }
-      return {
-        storeId,
-        kind: "product",
-        url: `https://www.humblebundle.com/store/${slug}`,
-      };
-    }
-    case "15": {
-      // Fanatical
-      const slug = titleToHyphenSlug(input.title);
-      if (!slug) {
-        return null;
-      }
-      return {
-        storeId,
-        kind: "product",
-        url: `https://www.fanatical.com/en/game/${slug}`,
-      };
-    }
-    case "23": {
-      // GameBillet — root path slug (not /games/…)
-      const slug = titleToHyphenSlug(input.title);
-      if (!slug) {
-        return null;
-      }
-      return {
-        storeId,
-        kind: "product",
-        url: `https://www.gamebillet.com/${slug}`,
-      };
-    }
-    case "25": {
-      const slug = titleToEpicSlug(input.title);
-      if (!slug) {
-        return null;
-      }
-      return {
-        storeId,
-        kind: "product",
-        url: `https://store.epicgames.com/p/${slug}?lang=de`,
-      };
-    }
-    default:
-      return null;
-  }
+  const url = PRODUCT_URL_BUILDERS[storeId]?.(input);
+  return url ? { storeId, kind: "product", url } : null;
 }
+
+/** One builder per CheapShark storeID for the search fallback path. */
+const SEARCH_URL_BUILDERS: Record<string, (query: string) => string> = {
+  "1": (query) => `https://store.steampowered.com/search/?term=${query}`,
+  "2": (query) => `https://www.gamersgate.com/games?query=${query}`,
+  "3": (query) => `https://www.greenmangaming.com/search?query=${query}`,
+  "7": (query) => `https://www.gog.com/en/games?query=${query}`,
+  "11": (query) =>
+    `https://www.humblebundle.com/store/search?search=${query}`,
+  "13": (query) => `https://store.ubisoft.com/de/search?q=${query}`,
+  "15": (query) => `https://www.fanatical.com/en/search?search=${query}`,
+  // WinGameStore product URLs need a numeric id CheapShark does not provide.
+  "21": (query) => `https://www.wingamestore.com/search/?Search=${query}`,
+  "23": (query) => `https://www.gamebillet.com/search?q=${query}`,
+  "25": (query) =>
+    `https://store.epicgames.com/browse?q=${query}&sortBy=relevancy&sortDir=DESC&count=40&lang=de`,
+  "27": (query) => `https://www.gamesplanet.com/search?query=${query}`,
+  "30": (query) => `https://www.indiegala.com/store/search?q=${query}`,
+};
 
 /**
  * Store search fallback — used when product needs an unknowable id
@@ -216,85 +185,16 @@ export function buildCheapsharkSearchUrl(
     return null;
   }
 
-  const query = encodeURIComponent(input.title);
-
-  switch (storeId) {
-    case "1":
-      return {
-        storeId,
-        kind: "search",
-        url: `https://store.steampowered.com/search/?term=${query}`,
-      };
-    case "2":
-      return {
-        storeId,
-        kind: "search",
-        url: `https://www.gamersgate.com/games?query=${query}`,
-      };
-    case "3":
-      return {
-        storeId,
-        kind: "search",
-        url: `https://www.greenmangaming.com/search?query=${query}`,
-      };
-    case "7":
-      return {
-        storeId,
-        kind: "search",
-        url: `https://www.gog.com/en/games?query=${query}`,
-      };
-    case "11":
-      return {
-        storeId,
-        kind: "search",
-        url: `https://www.humblebundle.com/store/search?search=${query}`,
-      };
-    case "13":
-      return {
-        storeId,
-        kind: "search",
-        url: `https://store.ubisoft.com/de/search?q=${query}`,
-      };
-    case "15":
-      return {
-        storeId,
-        kind: "search",
-        url: `https://www.fanatical.com/en/search?search=${query}`,
-      };
-    case "21":
-      // WinGameStore product URLs need a numeric id CheapShark does not provide.
-      return {
-        storeId,
-        kind: "search",
-        url: `https://www.wingamestore.com/search/?Search=${query}`,
-      };
-    case "23":
-      return {
-        storeId,
-        kind: "search",
-        url: `https://www.gamebillet.com/search?q=${query}`,
-      };
-    case "25":
-      return {
-        storeId,
-        kind: "search",
-        url: `https://store.epicgames.com/browse?q=${query}&sortBy=relevancy&sortDir=DESC&count=40&lang=de`,
-      };
-    case "27":
-      return {
-        storeId,
-        kind: "search",
-        url: `https://www.gamesplanet.com/search?query=${query}`,
-      };
-    case "30":
-      return {
-        storeId,
-        kind: "search",
-        url: `https://www.indiegala.com/store/search?q=${query}`,
-      };
-    default:
-      return null;
+  const builder = SEARCH_URL_BUILDERS[storeId];
+  if (!builder) {
+    return null;
   }
+
+  return {
+    storeId,
+    kind: "search",
+    url: builder(encodeURIComponent(input.title)),
+  };
 }
 
 /** Product first, then store search. Never DDG. */

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import type { MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 import {
   filtersToSearchParams,
   type DealListFilters,
 } from "@/lib/deals/filters";
+import { cn } from "@/lib/cn";
 
 import { useDealsNav } from "./deals-nav";
 
@@ -17,6 +18,13 @@ interface DealPaginationProps {
   total: number;
   pageSize: number;
 }
+
+const LINK_CLASS =
+  "inline-flex h-10 min-w-10 items-center justify-center rounded-md border border-stroke px-3 text-sm font-medium text-fg transition-colors duration-150 hover:bg-surface-2";
+const ACTIVE_CLASS =
+  "inline-flex h-10 min-w-10 items-center justify-center rounded-md bg-accent px-3 text-sm font-semibold text-fg";
+const DISABLED_CLASS =
+  "inline-flex h-10 min-w-10 items-center justify-center rounded-md border border-stroke/50 px-3 text-sm text-muted/50";
 
 function pageHref(filters: DealListFilters, page: number): string {
   const params = filtersToSearchParams(filters, page);
@@ -35,32 +43,26 @@ function pageWindow(current: number, total: number): number[] {
   return pages;
 }
 
-export function DealPagination({
-  filters,
-  page,
-  totalPages,
-  total,
-  pageSize,
-}: DealPaginationProps) {
-  const { navigate, isPending } = useDealsNav();
+function Ellipsis() {
+  return (
+    <span className="px-1 text-muted" aria-hidden>
+      …
+    </span>
+  );
+}
 
-  if (total === 0) {
-    return null;
-  }
+function PageLink({
+  href,
+  isPending,
+  children,
+}: {
+  href: string;
+  isPending: boolean;
+  children: ReactNode;
+}) {
+  const { navigate } = useDealsNav();
 
-  const from = (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
-  const pages = pageWindow(page, totalPages);
-  const showControls = totalPages > 1;
-
-  const linkClass =
-    "inline-flex h-10 min-w-10 items-center justify-center rounded-md border border-stroke px-3 text-sm font-medium text-fg transition-colors duration-150 hover:bg-surface-2";
-  const activeClass =
-    "inline-flex h-10 min-w-10 items-center justify-center rounded-md bg-accent px-3 text-sm font-semibold text-fg";
-  const disabledClass =
-    "inline-flex h-10 min-w-10 items-center justify-center rounded-md border border-stroke/50 px-3 text-sm text-muted/50";
-
-  function onNavigate(event: MouseEvent<HTMLAnchorElement>, href: string) {
+  function onNavigate(event: MouseEvent<HTMLAnchorElement>) {
     if (
       event.defaultPrevented ||
       event.button !== 0 ||
@@ -78,12 +80,194 @@ export function DealPagination({
   }
 
   return (
+    <Link
+      href={href}
+      prefetch
+      onClick={onNavigate}
+      className={LINK_CLASS}
+      aria-disabled={isPending}
+      tabIndex={isPending ? -1 : undefined}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function PreviousNextLink({
+  filters,
+  targetPage,
+  isPending,
+  label,
+  enabled,
+}: {
+  filters: DealListFilters;
+  targetPage: number;
+  isPending: boolean;
+  label: string;
+  enabled: boolean;
+}) {
+  if (!enabled) {
+    return <span className={DISABLED_CLASS}>{label}</span>;
+  }
+  return (
+    <PageLink href={pageHref(filters, targetPage)} isPending={isPending}>
+      {label}
+    </PageLink>
+  );
+}
+
+function LeadingPageLinks({
+  filters,
+  pages,
+  isPending,
+}: {
+  filters: DealListFilters;
+  pages: number[];
+  isPending: boolean;
+}) {
+  if (pages[0] <= 1) {
+    return null;
+  }
+  return (
+    <>
+      <PageLink href={pageHref(filters, 1)} isPending={isPending}>
+        1
+      </PageLink>
+      {pages[0] > 2 ? <Ellipsis /> : null}
+    </>
+  );
+}
+
+function TrailingPageLinks({
+  filters,
+  pages,
+  totalPages,
+  isPending,
+}: {
+  filters: DealListFilters;
+  pages: number[];
+  totalPages: number;
+  isPending: boolean;
+}) {
+  const lastShown = pages[pages.length - 1];
+  if (lastShown >= totalPages) {
+    return null;
+  }
+  return (
+    <>
+      {lastShown < totalPages - 1 ? <Ellipsis /> : null}
+      <PageLink href={pageHref(filters, totalPages)} isPending={isPending}>
+        {totalPages}
+      </PageLink>
+    </>
+  );
+}
+
+function PageNumberLinks({
+  filters,
+  pages,
+  page,
+  isPending,
+}: {
+  filters: DealListFilters;
+  pages: number[];
+  page: number;
+  isPending: boolean;
+}) {
+  return (
+    <>
+      {pages.map((pageNumber) =>
+        pageNumber === page ? (
+          <span key={pageNumber} className={ACTIVE_CLASS} aria-current="page">
+            {pageNumber}
+          </span>
+        ) : (
+          <PageLink
+            key={pageNumber}
+            href={pageHref(filters, pageNumber)}
+            isPending={isPending}
+          >
+            {pageNumber}
+          </PageLink>
+        ),
+      )}
+    </>
+  );
+}
+
+function PaginationControls({
+  filters,
+  page,
+  totalPages,
+  isPending,
+}: {
+  filters: DealListFilters;
+  page: number;
+  totalPages: number;
+  isPending: boolean;
+}) {
+  const pages = pageWindow(page, totalPages);
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      <PreviousNextLink
+        filters={filters}
+        targetPage={page - 1}
+        isPending={isPending}
+        label="Previous"
+        enabled={page > 1}
+      />
+
+      <LeadingPageLinks filters={filters} pages={pages} isPending={isPending} />
+      <PageNumberLinks
+        filters={filters}
+        pages={pages}
+        page={page}
+        isPending={isPending}
+      />
+      <TrailingPageLinks
+        filters={filters}
+        pages={pages}
+        totalPages={totalPages}
+        isPending={isPending}
+      />
+
+      <PreviousNextLink
+        filters={filters}
+        targetPage={page + 1}
+        isPending={isPending}
+        label="Next"
+        enabled={page < totalPages}
+      />
+    </div>
+  );
+}
+
+export function DealPagination({
+  filters,
+  page,
+  totalPages,
+  total,
+  pageSize,
+}: DealPaginationProps) {
+  const { isPending } = useDealsNav();
+
+  if (total === 0) {
+    return null;
+  }
+
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+  const showControls = totalPages > 1;
+
+  return (
     <nav
-      className={`flex flex-col gap-3 ${
+      className={cn(
+        "flex flex-col gap-3",
         showControls
           ? "items-center sm:flex-row sm:justify-between"
-          : "items-start"
-      }`}
+          : "items-start",
+      )}
       aria-label="Pagination"
       aria-busy={isPending}
     >
@@ -93,109 +277,12 @@ export function DealPagination({
       </p>
 
       {showControls ? (
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {page > 1 ? (
-            <Link
-              href={pageHref(filters, page - 1)}
-              prefetch
-              onClick={(event) =>
-                onNavigate(event, pageHref(filters, page - 1))
-              }
-              className={linkClass}
-              aria-disabled={isPending}
-              tabIndex={isPending ? -1 : undefined}
-            >
-              Previous
-            </Link>
-          ) : (
-            <span className={disabledClass}>Previous</span>
-          )}
-
-          {pages[0] > 1 ? (
-            <>
-              <Link
-                href={pageHref(filters, 1)}
-                prefetch
-                onClick={(event) => onNavigate(event, pageHref(filters, 1))}
-                className={linkClass}
-                aria-disabled={isPending}
-                tabIndex={isPending ? -1 : undefined}
-              >
-                1
-              </Link>
-              {pages[0] > 2 ? (
-                <span className="px-1 text-muted" aria-hidden>
-                  …
-                </span>
-              ) : null}
-            </>
-          ) : null}
-
-          {pages.map((pageNumber) =>
-            pageNumber === page ? (
-              <span
-                key={pageNumber}
-                className={activeClass}
-                aria-current="page"
-              >
-                {pageNumber}
-              </span>
-            ) : (
-              <Link
-                key={pageNumber}
-                href={pageHref(filters, pageNumber)}
-                prefetch
-                onClick={(event) =>
-                  onNavigate(event, pageHref(filters, pageNumber))
-                }
-                className={linkClass}
-                aria-disabled={isPending}
-                tabIndex={isPending ? -1 : undefined}
-              >
-                {pageNumber}
-              </Link>
-            ),
-          )}
-
-          {pages[pages.length - 1] < totalPages ? (
-            <>
-              {pages[pages.length - 1] < totalPages - 1 ? (
-                <span className="px-1 text-muted" aria-hidden>
-                  …
-                </span>
-              ) : null}
-              <Link
-                href={pageHref(filters, totalPages)}
-                prefetch
-                onClick={(event) =>
-                  onNavigate(event, pageHref(filters, totalPages))
-                }
-                className={linkClass}
-                aria-disabled={isPending}
-                tabIndex={isPending ? -1 : undefined}
-              >
-                {totalPages}
-              </Link>
-            </>
-          ) : null}
-
-          {page < totalPages ? (
-            <Link
-              href={pageHref(filters, page + 1)}
-              prefetch
-              onClick={(event) =>
-                onNavigate(event, pageHref(filters, page + 1))
-              }
-              className={linkClass}
-              aria-disabled={isPending}
-              tabIndex={isPending ? -1 : undefined}
-            >
-              Next
-            </Link>
-          ) : (
-            <span className={disabledClass}>Next</span>
-          )}
-        </div>
+        <PaginationControls
+          filters={filters}
+          page={page}
+          totalPages={totalPages}
+          isPending={isPending}
+        />
       ) : null}
     </nav>
   );

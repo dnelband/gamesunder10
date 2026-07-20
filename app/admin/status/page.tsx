@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { implementationPlan } from "@/lib/implementation-plan-data";
+import { cn } from "@/lib/cn";
 import {
   listSourceHealth,
   type SourceHealthRow,
@@ -24,6 +25,21 @@ function statusBadgeClass(status: SourceHealthStatus | "unknown"): string {
 
 function taskStatusLabel(status: string): string {
   return status.replace("_", " ");
+}
+
+function taskStatusBadgeKey(
+  status: string,
+): SourceHealthStatus | "unknown" {
+  if (status === "done") {
+    return "ok";
+  }
+  if (status === "blocked") {
+    return "broken";
+  }
+  if (status === "in_progress") {
+    return "degraded";
+  }
+  return "unknown";
 }
 
 function formatTimestamp(value: string | null): string {
@@ -72,69 +88,8 @@ async function StatusContent() {
 
   return (
     <div className="flex flex-col gap-12">
-      <header className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
-            Status
-          </h1>
-          <Link
-            href="/admin/stores"
-            className="text-sm text-muted transition-colors hover:text-fg"
-          >
-            Store link builders →
-          </Link>
-        </div>
-        <p className="text-muted">
-          Source health from real cron runs. Implementation checklist below —
-          MVP is marked done; post-MVP lives in its own section.
-        </p>
-      </header>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="font-display text-xl font-semibold text-fg">
-          Source health
-        </h2>
-        <div className="overflow-x-auto rounded-lg border border-stroke">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-surface text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Source</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Last success</th>
-                <th className="px-4 py-3 font-medium">Last failure</th>
-                <th className="px-4 py-3 font-medium">Failures</th>
-                <th className="px-4 py-3 font-medium">Last error</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sourceRows.map((row) => (
-                <tr key={row.source} className="border-t border-stroke">
-                  <td className="px-4 py-3 font-mono text-fg">{row.source}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-md px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(
-                        row.status === "unknown" ? "unknown" : row.status,
-                      )}`}
-                    >
-                      {row.status === "unknown" ? "not run" : row.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted">
-                    {formatTimestamp(row.lastSuccessAt)}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted">
-                    {formatTimestamp(row.lastFailureAt)}
-                  </td>
-                  <td className="px-4 py-3 text-fg">{row.consecutiveFailures}</td>
-                  <td className="max-w-xs truncate px-4 py-3 text-muted">
-                    {row.lastError ?? "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <StatusHeader />
+      <SourceHealthSection sourceRows={sourceRows} />
 
       <section className="flex flex-col gap-6">
         <h2 className="font-display text-xl font-semibold text-fg">
@@ -145,21 +100,118 @@ async function StatusContent() {
         ))}
       </section>
 
-      {postMvp ? (
-        <section className="flex flex-col gap-6">
-          <div className="flex flex-col gap-1">
-            <h2 className="font-display text-xl font-semibold text-fg">
-              Post-MVP / future
-            </h2>
-            <p className="text-sm text-muted">
-              Not in scope for MVP (eShop, ITAD, eBay physical, remaining store
-              product URLs, affiliates, live FX, admin auth).
-            </p>
-          </div>
-          <PlanPhase phase={postMvp} />
-        </section>
-      ) : null}
+      {postMvp ? <PostMvpSection phase={postMvp} /> : null}
     </div>
+  );
+}
+
+function StatusHeader() {
+  return (
+    <header className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-fg">
+          Status
+        </h1>
+        <Link
+          href="/admin/stores"
+          className="text-sm text-muted transition-colors hover:text-fg"
+        >
+          Store link builders →
+        </Link>
+      </div>
+      <p className="text-muted">
+        Source health from real cron runs. Implementation checklist below —
+        MVP is marked done; post-MVP lives in its own section.
+      </p>
+    </header>
+  );
+}
+
+function SourceHealthSection({
+  sourceRows,
+}: {
+  sourceRows: ReturnType<typeof mergeSourceRows>;
+}) {
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="font-display text-xl font-semibold text-fg">
+        Source health
+      </h2>
+      <div className="overflow-x-auto rounded-lg border border-stroke">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-surface text-muted">
+            <tr>
+              <th className="px-4 py-3 font-medium">Source</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Last success</th>
+              <th className="px-4 py-3 font-medium">Last failure</th>
+              <th className="px-4 py-3 font-medium">Failures</th>
+              <th className="px-4 py-3 font-medium">Last error</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sourceRows.map((row) => (
+              <SourceHealthRowItem key={row.source} row={row} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function SourceHealthRowItem({
+  row,
+}: {
+  row: ReturnType<typeof mergeSourceRows>[number];
+}) {
+  return (
+    <tr className="border-t border-stroke">
+      <td className="px-4 py-3 font-mono text-fg">{row.source}</td>
+      <td className="px-4 py-3">
+        <span
+          className={cn(
+            "inline-flex rounded-md px-2.5 py-0.5 text-xs font-medium",
+            statusBadgeClass(
+              row.status === "unknown" ? "unknown" : row.status,
+            ),
+          )}
+        >
+          {row.status === "unknown" ? "not run" : row.status}
+        </span>
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap text-muted">
+        {formatTimestamp(row.lastSuccessAt)}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap text-muted">
+        {formatTimestamp(row.lastFailureAt)}
+      </td>
+      <td className="px-4 py-3 text-fg">{row.consecutiveFailures}</td>
+      <td className="max-w-xs truncate px-4 py-3 text-muted">
+        {row.lastError ?? "—"}
+      </td>
+    </tr>
+  );
+}
+
+function PostMvpSection({
+  phase,
+}: {
+  phase: (typeof implementationPlan)[number];
+}) {
+  return (
+    <section className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <h2 className="font-display text-xl font-semibold text-fg">
+          Post-MVP / future
+        </h2>
+        <p className="text-sm text-muted">
+          Not in scope for MVP (eShop, ITAD, eBay physical, remaining store
+          product URLs, affiliates, live FX, admin auth).
+        </p>
+      </div>
+      <PlanPhase phase={phase} />
+    </section>
   );
 }
 
@@ -178,15 +230,10 @@ function PlanPhase({
             className="flex items-start gap-3 rounded-lg border border-stroke bg-surface px-4 py-3"
           >
             <span
-              className={`mt-0.5 inline-flex shrink-0 rounded-md px-2 py-0.5 text-xs font-medium capitalize ${statusBadgeClass(
-                task.status === "done"
-                  ? "ok"
-                  : task.status === "blocked"
-                    ? "broken"
-                    : task.status === "in_progress"
-                      ? "degraded"
-                      : "unknown",
-              )}`}
+              className={cn(
+                "mt-0.5 inline-flex shrink-0 rounded-md px-2 py-0.5 text-xs font-medium capitalize",
+                statusBadgeClass(taskStatusBadgeKey(task.status)),
+              )}
             >
               {taskStatusLabel(task.status)}
             </span>

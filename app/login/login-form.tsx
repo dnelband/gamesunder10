@@ -90,7 +90,99 @@ function PasswordField({
   );
 }
 
-export function LoginForm() {
+const MODE_TABS = [
+  ["signin", "Sign in"],
+  ["signup", "Create account"],
+  ["magic", "Magic link"],
+] as const;
+
+function submitButtonLabel(pending: boolean, mode: Mode): string {
+  if (pending) {
+    return "Working…";
+  }
+  if (mode === "magic") {
+    return "Send magic link";
+  }
+  if (mode === "signup") {
+    return "Create account";
+  }
+  return "Sign in";
+}
+
+function ModeTabs({
+  mode,
+  onSelect,
+}: {
+  mode: Mode;
+  onSelect: (mode: Mode) => void;
+}) {
+  return (
+    <div className="flex gap-2 text-sm">
+      {MODE_TABS.map(([id, label]) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => onSelect(id)}
+          className={
+            mode === id
+              ? "rounded-md bg-accent px-3 py-1.5 font-medium text-fg"
+              : "rounded-md border border-stroke px-3 py-1.5 text-muted hover:text-fg"
+          }
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+type Supabase = ReturnType<typeof createClient>;
+
+async function submitMagicLink(
+  supabase: Supabase,
+  email: string,
+  redirectTo: string,
+): Promise<string> {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectTo },
+  });
+  return error ? error.message : "Check your email for the magic link.";
+}
+
+async function submitSignup(
+  supabase: Supabase,
+  email: string,
+  password: string,
+  redirectTo: string,
+): Promise<{ message: string; ok: boolean }> {
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: redirectTo },
+  });
+  if (error) {
+    return { message: error.message, ok: false };
+  }
+  return {
+    message: "Account created. Check your email to confirm, then sign in.",
+    ok: true,
+  };
+}
+
+async function submitSignin(
+  supabase: Supabase,
+  email: string,
+  password: string,
+): Promise<string | null> {
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  return error ? error.message : null;
+}
+
+function useLoginFormState() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/deals";
@@ -103,6 +195,12 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<string | null>(urlError);
   const [pending, setPending] = useState(false);
+
+  function selectMode(nextMode: Mode) {
+    setMode(nextMode);
+    setMessage(null);
+    setPasswordConfirm("");
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -120,42 +218,21 @@ export function LoginForm() {
 
     try {
       if (mode === "magic") {
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { emailRedirectTo: redirectTo },
-        });
-        if (error) {
-          setMessage(error.message);
-          return;
-        }
-        setMessage("Check your email for the magic link.");
+        setMessage(await submitMagicLink(supabase, email, redirectTo));
         return;
       }
-
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: redirectTo },
-        });
-        if (error) {
-          setMessage(error.message);
-          return;
+        const result = await submitSignup(supabase, email, password, redirectTo);
+        setMessage(result.message);
+        if (result.ok) {
+          setMode("signin");
+          setPasswordConfirm("");
         }
-        setMessage(
-          "Account created. Check your email to confirm, then sign in.",
-        );
-        setMode("signin");
-        setPasswordConfirm("");
         return;
       }
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) {
-        setMessage(error.message);
+      const errorMessage = await submitSignin(supabase, email, password);
+      if (errorMessage) {
+        setMessage(errorMessage);
         return;
       }
       router.replace(next.startsWith("/") ? next : "/deals");
@@ -164,6 +241,99 @@ export function LoginForm() {
       setPending(false);
     }
   }
+
+  return {
+    mode,
+    selectMode,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    passwordConfirm,
+    setPasswordConfirm,
+    showPassword,
+    setShowPassword,
+    message,
+    pending,
+    onSubmit,
+  };
+}
+
+function LoginFormFields({
+  state,
+}: {
+  state: ReturnType<typeof useLoginFormState>;
+}) {
+  const {
+    mode,
+    email,
+    setEmail,
+    password,
+    setPassword,
+    passwordConfirm,
+    setPasswordConfirm,
+    showPassword,
+    setShowPassword,
+    message,
+    pending,
+    onSubmit,
+  } = state;
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="text-muted">Email</span>
+        <input
+          type="email"
+          required
+          autoComplete="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          className="h-11 rounded-md border border-stroke bg-surface px-3 text-fg outline-none focus:border-muted"
+        />
+      </label>
+
+      {mode !== "magic" ? (
+        <PasswordField
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          autoComplete={mode === "signup" ? "new-password" : "current-password"}
+          showPassword={showPassword}
+          onToggleShow={() => setShowPassword((value) => !value)}
+        />
+      ) : null}
+
+      {mode === "signup" ? (
+        <PasswordField
+          label="Repeat password"
+          value={passwordConfirm}
+          onChange={setPasswordConfirm}
+          autoComplete="new-password"
+          showPassword={showPassword}
+          onToggleShow={() => setShowPassword((value) => !value)}
+        />
+      ) : null}
+
+      {message ? (
+        <p className="rounded-md border border-stroke bg-surface px-3 py-2 text-sm text-muted">
+          {message}
+        </p>
+      ) : null}
+
+      <button
+        type="submit"
+        disabled={pending}
+        className="inline-flex h-11 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-fg transition-opacity hover:opacity-90 disabled:opacity-50"
+      >
+        {submitButtonLabel(pending, mode)}
+      </button>
+    </form>
+  );
+}
+
+export function LoginForm() {
+  const state = useLoginFormState();
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-8 px-4 py-12 sm:px-6">
@@ -179,90 +349,9 @@ export function LoginForm() {
         </p>
       </div>
 
-      <div className="flex gap-2 text-sm">
-        {(
-          [
-            ["signin", "Sign in"],
-            ["signup", "Create account"],
-            ["magic", "Magic link"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => {
-              setMode(id);
-              setMessage(null);
-              setPasswordConfirm("");
-            }}
-            className={
-              mode === id
-                ? "rounded-md bg-accent px-3 py-1.5 font-medium text-fg"
-                : "rounded-md border border-stroke px-3 py-1.5 text-muted hover:text-fg"
-            }
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <ModeTabs mode={state.mode} onSelect={state.selectMode} />
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-muted">Email</span>
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="h-11 rounded-md border border-stroke bg-surface px-3 text-fg outline-none focus:border-muted"
-          />
-        </label>
-
-        {mode !== "magic" ? (
-          <PasswordField
-            label="Password"
-            value={password}
-            onChange={setPassword}
-            autoComplete={
-              mode === "signup" ? "new-password" : "current-password"
-            }
-            showPassword={showPassword}
-            onToggleShow={() => setShowPassword((value) => !value)}
-          />
-        ) : null}
-
-        {mode === "signup" ? (
-          <PasswordField
-            label="Repeat password"
-            value={passwordConfirm}
-            onChange={setPasswordConfirm}
-            autoComplete="new-password"
-            showPassword={showPassword}
-            onToggleShow={() => setShowPassword((value) => !value)}
-          />
-        ) : null}
-
-        {message ? (
-          <p className="rounded-md border border-stroke bg-surface px-3 py-2 text-sm text-muted">
-            {message}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex h-11 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-fg transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
-          {pending
-            ? "Working…"
-            : mode === "magic"
-              ? "Send magic link"
-              : mode === "signup"
-                ? "Create account"
-                : "Sign in"}
-        </button>
-      </form>
+      <LoginFormFields state={state} />
 
       <Link href="/deals" className="text-sm text-muted hover:text-fg">
         ← Back to deals
