@@ -166,10 +166,30 @@ export async function getWishlistItemByIgdbId(
   return rows[0] ? rowToItem(rows[0]) : null;
 }
 
+type MatchRow = {
+  id: string;
+  source: string;
+  title: string;
+  storeName: string;
+  steamAppId: string | null;
+  externalStoreUid: string | null;
+  priceEur: number;
+  originalPriceEur: number;
+  url: string;
+  imageUrl: string | null;
+  sourceReleaseDate: string | null;
+  distributionFormat: string;
+  genres: string[] | null;
+  platforms: string[] | null;
+  rating: number | null;
+  ratingSource: string | null;
+  normalizedTitle: string;
+};
+
 /**
  * Wishlist is for games that do not yet appear as deals under €10.
  */
-async function findTitleOnlyDealRows(title: string) {
+async function findTitleOnlyDealRows(title: string): Promise<MatchRow[]> {
   const normalized = normalizeTitle(title);
 
   const exactRows = await db
@@ -201,8 +221,33 @@ async function findTitleOnlyDealRows(title: string) {
       ),
     );
 
-  return candidateRows.filter(
+  return filterTitleRowsByCanonical(candidateRows, canonical);
+}
+
+function filterTitleRowsByCanonical(
+  rows: MatchRow[],
+  canonical: string,
+): MatchRow[] {
+  return rows.filter(
     (row) => canonicalizeWishlistMatchTitle(row.title) === canonical,
+  );
+}
+
+function filterTitleOnlyFromRows(title: string, rows: MatchRow[]): MatchRow[] {
+  const normalized = normalizeTitle(title);
+  const exact = rows.filter((row) => row.normalizedTitle === normalized);
+  if (exact.length > 0) {
+    return exact;
+  }
+
+  const canonical = canonicalizeWishlistMatchTitle(title);
+  if (canonical.length < 3) {
+    return [];
+  }
+
+  return filterTitleRowsByCanonical(
+    rows.filter((row) => row.normalizedTitle.startsWith(canonical)),
+    canonical,
   );
 }
 
@@ -216,9 +261,7 @@ export type WishlistMatchExplanation = {
   titleDealCount: number;
 };
 
-function rowsToMatch(
-  listingRows: Awaited<ReturnType<typeof findTitleOnlyDealRows>>,
-): WishlistDealMatch | null {
+function rowsToMatch(listingRows: MatchRow[]): WishlistDealMatch | null {
   if (listingRows.length === 0) {
     return null;
   }
@@ -236,6 +279,55 @@ function rowsToMatch(
   };
 }
 
+/** In-memory match against a preloaded under-€10 deal set (batch path). */
+export function matchWishlistDealFromRows(
+  input: { steamAppId?: string | null; title: string },
+  rows: MatchRow[],
+): WishlistMatchExplanation {
+  const steamAppId =
+    input.steamAppId && input.steamAppId !== "0" ? input.steamAppId : null;
+
+  let listingRows: MatchRow[] = [];
+  let matchedVia: WishlistMatchExplanation["matchedVia"] = null;
+  let steamDealCount = 0;
+  let titleDealCount = 0;
+
+  if (steamAppId) {
+    const steamRows = rows.filter((row) => row.steamAppId === steamAppId);
+    steamDealCount = steamRows.length;
+    if (steamRows.length > 0) {
+      listingRows = steamRows;
+      matchedVia = "steam";
+    }
+  }
+
+  if (listingRows.length === 0) {
+    const titleRows = filterTitleOnlyFromRows(input.title, rows);
+    titleDealCount = titleRows.length;
+    if (titleRows.length > 0) {
+      listingRows = titleRows;
+      matchedVia = "title";
+    }
+  }
+
+  return {
+    match: rowsToMatch(listingRows),
+    wishlistTitle: input.title,
+    steamAppId,
+    canonicalTitle: canonicalizeWishlistMatchTitle(input.title),
+    matchedVia,
+    steamDealCount,
+    titleDealCount,
+  };
+}
+
+async function loadDealsForWishlistMatching(): Promise<MatchRow[]> {
+  return db
+    .select(matchSelect)
+    .from(deals)
+    .where(lte(deals.priceEur, MAX_PRICE_EUR));
+}
+
 export async function explainWishlistDealMatch(input: {
   steamAppId?: string | null;
   title: string;
@@ -243,7 +335,7 @@ export async function explainWishlistDealMatch(input: {
   const steamAppId =
     input.steamAppId && input.steamAppId !== "0" ? input.steamAppId : null;
 
-  let listingRows: Awaited<ReturnType<typeof findTitleOnlyDealRows>> = [];
+  let listingRows: MatchRow[] = [];
   let matchedVia: WishlistMatchExplanation["matchedVia"] = null;
   let steamDealCount = 0;
   let titleDealCount = 0;
@@ -357,17 +449,43 @@ export async function removeWishlistItem(
     .where(and(eq(wishlists.userId, userId), eq(wishlists.igdbId, igdbId)));
 }
 
+/**
+ * Batch match: one under-€10 deals query, then match each wishlist item in memory.
+ * Prefer this over per-item `findDealMatchForGame` for lists / cron.
+ */
 export async function findDealMatchesForWishlist(
   items: WishlistItem[],
 ): Promise<Record<number, WishlistDealMatch | null>> {
   const out: Record<number, WishlistDealMatch | null> = {};
-  await Promise.all(
-    items.map(async (item) => {
-      out[item.igdbId] = await findDealMatchForGame({
-        steamAppId: item.steamAppId,
-        title: item.title,
-      });
-    }),
-  );
+  if (items.length === 0) {
+    return out;
+  }
+
+  const rows = await loadDealsForWishlistMatching();
+  for (const item of items) {
+    out[item.igdbId] = matchWishlistDealFromRows(
+      { steamAppId: item.steamAppId, title: item.title },
+      rows,
+    ).match;
+  }
+  return out;
+}
+
+/** Same batch load as findDealMatchesForWishlist, keyed by wishlist row id. */
+export async function explainWishlistDealMatchesForItems(
+  items: Array<{ id: string; steamAppId: string | null; title: string }>,
+): Promise<Record<string, WishlistMatchExplanation>> {
+  const out: Record<string, WishlistMatchExplanation> = {};
+  if (items.length === 0) {
+    return out;
+  }
+
+  const rows = await loadDealsForWishlistMatching();
+  for (const item of items) {
+    out[item.id] = matchWishlistDealFromRows(
+      { steamAppId: item.steamAppId, title: item.title },
+      rows,
+    );
+  }
   return out;
 }

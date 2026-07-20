@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 
 import {
-  explainWishlistDealMatch,
+  explainWishlistDealMatchesForItems,
   listAllWishlistItems,
   markWishlistNotified,
   type WishlistDealMatch,
@@ -189,13 +189,9 @@ async function sendWishlistDealEmail(
 async function processWishlistItem(
   ctx: NotifyContext,
   item: WishlistItem,
+  match: WishlistDealMatch | null,
 ): Promise<NotifyOutcome> {
   try {
-    const { match } = await explainWishlistDealMatch({
-      steamAppId: item.steamAppId,
-      title: item.title,
-    });
-
     if (!match) {
       return "noMatch";
     }
@@ -276,8 +272,14 @@ export async function notifyWishlistDealMatches(): Promise<WishlistNotifyResult>
     sendFailed: 0,
   };
 
+  const matchesById = await explainWishlistDealMatchesForItems(items);
+
   for (const item of items) {
-    const outcome = await processWishlistItem(ctx, item);
+    const outcome = await processWishlistItem(
+      ctx,
+      item,
+      matchesById[item.id]?.match ?? null,
+    );
     applyNotifyOutcome(counts, outcome);
   }
 
