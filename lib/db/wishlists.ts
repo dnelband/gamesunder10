@@ -23,6 +23,8 @@ export interface WishlistItem {
   releaseDate: string | null;
   steamAppId: string | null;
   createdAt: string;
+  lastNotifiedAt: string | null;
+  lastNotifiedPriceEur: number | null;
 }
 
 export interface WishlistDealMatch {
@@ -49,6 +51,8 @@ function rowToItem(row: typeof wishlists.$inferSelect): WishlistItem {
     releaseDate: row.releaseDate,
     steamAppId: row.steamAppId,
     createdAt: row.createdAt,
+    lastNotifiedAt: row.lastNotifiedAt ?? null,
+    lastNotifiedPriceEur: row.lastNotifiedPriceEur ?? null,
   };
 }
 
@@ -126,6 +130,25 @@ export async function listWishlistItems(
   return rows
     .map(rowToItem)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** All wishlist rows — cron notifier only. */
+export async function listAllWishlistItems(): Promise<WishlistItem[]> {
+  const rows = await db.select().from(wishlists);
+  return rows.map(rowToItem);
+}
+
+export async function markWishlistNotified(
+  id: string,
+  priceEur: number,
+): Promise<void> {
+  await db
+    .update(wishlists)
+    .set({
+      lastNotifiedAt: new Date().toISOString(),
+      lastNotifiedPriceEur: priceEur,
+    })
+    .where(eq(wishlists.id, id));
 }
 
 export async function getWishlistItemByIgdbId(

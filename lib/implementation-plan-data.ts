@@ -257,6 +257,13 @@ export const implementationPlan: ImplementationPhase[] = [
           "IGDB-backed. Add only from /wishlist search or empty deals search CTA — not from existing deal cards. Rejects add if game already under €10.",
       },
       {
+        id: "wishlist-alerts",
+        title: "Wishlist deal alerts (email)",
+        status: "done",
+        notes:
+          "After CS/PSN/Xbox cron success: match wishlists → Resend email. Dedupe via lastNotifiedAt / lastNotifiedPriceEur (re-notify only on further drop). Needs RESEND_* + SUPABASE_SERVICE_ROLE_KEY.",
+      },
+      {
         id: "admin-auth",
         title: "Auth for /admin (shared secret or simple login)",
         status: "planned",

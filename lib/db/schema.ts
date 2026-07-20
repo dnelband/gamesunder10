@@ -85,6 +85,11 @@ export const wishlists = pgTable(
     })
       .notNull()
       .defaultNow(),
+    lastNotifiedAt: timestamp("last_notified_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    lastNotifiedPriceEur: doublePrecision("last_notified_price_eur"),
   },
   (table) => [
     uniqueIndex("wishlists_user_igdb_uidx").on(table.userId, table.igdbId),
