@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { listStoreDealStats } from "@/lib/db/store-stats";
 import { dealsHrefForStore } from "@/lib/deals/filters";
-import { cn } from "@/lib/cn";
+import { clsx } from "clsx";
 import type { StoreUrlKind } from "@/lib/sources/cheapshark/store-url-kinds";
 
 function builderBadgeClass(kind: StoreUrlKind): string {
@@ -140,7 +140,7 @@ function StoreStatsRow({ row }: { row: StoreDealStats[number] }) {
       </td>
       <td className="px-4 py-3">
         <span
-          className={cn(
+          className={clsx(
             "inline-flex rounded-md px-2.5 py-0.5 text-xs font-semibold capitalize",
             builderBadgeClass(row.builder.kind),
           )}

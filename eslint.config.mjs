@@ -37,6 +37,25 @@ const eslintConfig = defineConfig([
           caughtErrorsIgnorePattern: "^_",
         },
       ],
+      // Custom: keep conditional Tailwind/class strings via `clsx`. Manual
+      // template/concat joins on JSX `className` are easy to get wrong (extra
+      // spaces, falsey "undefined") and harder to review. There is no dedicated
+      // eslint-plugin for this — enforce with AST selectors.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "JSXAttribute[name.name='className'] JSXExpressionContainer > TemplateLiteral",
+          message:
+            "Do not build className with template literals. Use clsx(...) from \"clsx\".",
+        },
+        {
+          selector:
+            "JSXAttribute[name.name='className'] JSXExpressionContainer > BinaryExpression[operator='+']",
+          message:
+            "Do not concatenate className with +. Use clsx(...) from \"clsx\".",
+        },
+      ],
     },
   },
   {

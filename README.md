@@ -62,11 +62,14 @@ Vercel Cron can call the same `/api/cron/*` routes in production for remote-frie
 
 Ops pages live under `/admin` (status, stores, implementation checklist). They are **not** linked from public nav. Auth is still planned — treat the routes as internal for now.
 
-## Tests
+## Tests & lint
 
 ```bash
 pnpm test
+pnpm lint
 ```
+
+`pnpm install` enables a Husky **pre-commit** hook that runs `pnpm lint` (fails the commit if lint fails).
 
 ## Deploy
 

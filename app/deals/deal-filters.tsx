@@ -8,7 +8,7 @@ import {
   filtersToSearchParams,
   type DealListFilters,
 } from "@/lib/deals/filters";
-import { cn } from "@/lib/cn";
+import { clsx } from "clsx";
 import { effectiveSearchQuery } from "@/lib/search-query";
 
 import { useDealsNav } from "./deals-nav";
@@ -64,7 +64,7 @@ function ChevronDown({ open }: { open: boolean }) {
       strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={cn(
+      className={clsx(
         "size-3.5 shrink-0 text-muted transition-transform duration-150",
         open && "rotate-180",
       )}
@@ -118,7 +118,7 @@ function FilterDropdown({
       <button
         type="button"
         onClick={onToggle}
-        className={cn(
+        className={clsx(
           "inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors",
           open
             ? "border-accent bg-surface text-fg"

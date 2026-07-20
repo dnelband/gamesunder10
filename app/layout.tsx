@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
 import Link from "next/link";
 
 import { BrandWordmark } from "@/components/brand-wordmark";
+import { clsx } from "clsx";
 
 import "./globals.css";
 
@@ -34,7 +35,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${bricolage.variable} ${dmSans.variable} h-full antialiased`}
+      className={clsx(bricolage.variable, dmSans.variable, "h-full antialiased")}
     >
       <body className="flex min-h-full flex-col bg-bg font-sans text-fg">
         <div className="flex flex-1 flex-col">{children}</div>

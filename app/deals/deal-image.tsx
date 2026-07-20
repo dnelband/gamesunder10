@@ -5,6 +5,8 @@
  * Default fill fit is `width`: always span the box width. Landscape
  * letterboxes top/bottom; taller art may clip vertically (overflow on parent).
  */
+import { clsx } from "clsx";
+
 interface DealImageProps {
   src: string;
   alt?: string;
@@ -38,12 +40,8 @@ export function DealImage({
   fill = false,
   priority = false,
   fit = "width",
-  className = "",
+  className,
 }: DealImageProps) {
-  const classes = fill
-    ? `${fillClasses(fit)} ${className}`.trim()
-    : className;
-
   return (
     // eslint-disable-next-line @next/next/no-img-element -- arbitrary storefront CDNs
     <img
@@ -52,7 +50,7 @@ export function DealImage({
       loading={priority ? "eager" : "lazy"}
       decoding="async"
       fetchPriority={priority ? "high" : undefined}
-      className={classes}
+      className={clsx(fill && fillClasses(fit), className)}
     />
   );
 }

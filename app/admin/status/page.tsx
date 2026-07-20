@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { implementationPlan } from "@/lib/implementation-plan-data";
-import { cn } from "@/lib/cn";
+import { clsx } from "clsx";
 import {
   listSourceHealth,
   type SourceHealthRow,
@@ -170,7 +170,7 @@ function SourceHealthRowItem({
       <td className="px-4 py-3 font-mono text-fg">{row.source}</td>
       <td className="px-4 py-3">
         <span
-          className={cn(
+          className={clsx(
             "inline-flex rounded-md px-2.5 py-0.5 text-xs font-medium",
             statusBadgeClass(
               row.status === "unknown" ? "unknown" : row.status,
@@ -230,7 +230,7 @@ function PlanPhase({
             className="flex items-start gap-3 rounded-lg border border-stroke bg-surface px-4 py-3"
           >
             <span
-              className={cn(
+              className={clsx(
                 "mt-0.5 inline-flex shrink-0 rounded-md px-2 py-0.5 text-xs font-medium capitalize",
                 statusBadgeClass(taskStatusBadgeKey(task.status)),
               )}

@@ -7,7 +7,7 @@ import {
   filtersToSearchParams,
   type DealListFilters,
 } from "@/lib/deals/filters";
-import { cn } from "@/lib/cn";
+import { clsx } from "clsx";
 
 import { useDealsNav } from "./deals-nav";
 
@@ -262,7 +262,7 @@ export function DealPagination({
 
   return (
     <nav
-      className={cn(
+      className={clsx(
         "flex flex-col gap-3",
         showControls
           ? "items-center sm:flex-row sm:justify-between"

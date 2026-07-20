@@ -5,7 +5,7 @@ import {
   getScoreBadgeClass,
 } from "@/lib/format-rating";
 import { sortPlatforms } from "@/lib/format-platform";
-import { cn } from "@/lib/cn";
+import { clsx } from "clsx";
 import type { GameOffer } from "@/types/deal";
 
 import { DealImage } from "./deal-image";
@@ -69,7 +69,7 @@ function PriceOverlay({ game, lead }: { game: GameOffer; lead: GameOffer["offers
         </span>
         {game.rating !== null && game.ratingSource ? (
           <span
-            className={cn(
+            className={clsx(
               "flex min-w-8 items-center justify-center rounded px-1.5 py-1 text-sm font-bold leading-none",
               getScoreBadgeClass(game.rating, game.ratingSource),
             )}
