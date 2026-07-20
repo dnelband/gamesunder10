@@ -1,7 +1,8 @@
 import { Resend } from "resend";
 
+import { canonicalizeWishlistMatchTitle } from "@/lib/deal-utils";
 import {
-  findDealMatchForGame,
+  explainWishlistDealMatch,
   listAllWishlistItems,
   markWishlistNotified,
   type WishlistDealMatch,
@@ -11,12 +12,38 @@ import { createAdminClient, hasServiceRoleKey } from "@/lib/supabase/admin";
 
 const PRICE_DROP_EPSILON = 0.01;
 
+export type WishlistNotifyItemResult = {
+  igdbId: number;
+  title: string;
+  steamAppId: string | null;
+  status:
+    | "notified"
+    | "no_match"
+    | "already_notified"
+    | "missing_email"
+    | "send_failed";
+  canonicalTitle: string;
+  matchedVia?: "steam" | "title";
+  steamDealCount: number;
+  titleDealCount: number;
+  matchTitle?: string;
+  matchPriceEur?: number;
+  error?: string;
+};
+
 export type WishlistNotifyResult = {
   scanned: number;
   notified: number;
   skipped: number;
   errors: number;
   skippedReason?: string;
+  detail?: {
+    noMatch: number;
+    alreadyNotifiedAtThisPrice: number;
+    missingUserEmail: number;
+    sendFailed: number;
+  };
+  items?: WishlistNotifyItemResult[];
 };
 
 function siteBaseUrl(): string {
@@ -148,22 +175,70 @@ export async function notifyWishlistDealMatches(): Promise<WishlistNotifyResult>
   let notified = 0;
   let skipped = 0;
   let errors = 0;
+  let noMatch = 0;
+  let alreadyNotifiedAtThisPrice = 0;
+  let missingUserEmail = 0;
+  let sendFailed = 0;
+  const itemResults: WishlistNotifyItemResult[] = [];
 
   for (const item of items) {
     try {
-      const match = await findDealMatchForGame({
+      const explanation = await explainWishlistDealMatch({
         steamAppId: item.steamAppId,
         title: item.title,
       });
+      const match = explanation.match;
+      const baseResult: Omit<
+        WishlistNotifyItemResult,
+        "status" | "matchTitle" | "matchPriceEur" | "error"
+      > = {
+        igdbId: item.igdbId,
+        title: item.title,
+        steamAppId: explanation.steamAppId,
+        canonicalTitle: explanation.canonicalTitle,
+        matchedVia: explanation.matchedVia ?? undefined,
+        steamDealCount: explanation.steamDealCount,
+        titleDealCount: explanation.titleDealCount,
+      };
 
-      if (!match || !shouldNotify(item, match)) {
+      if (!match) {
         skipped += 1;
+        noMatch += 1;
+        itemResults.push({
+          ...baseResult,
+          status: "no_match",
+          error:
+            explanation.steamAppId && explanation.steamDealCount === 0
+              ? "no deal for steamAppId; title fallback also found none"
+              : "no deal matched by title",
+        });
+        continue;
+      }
+
+      if (!shouldNotify(item, match)) {
+        skipped += 1;
+        alreadyNotifiedAtThisPrice += 1;
+        itemResults.push({
+          ...baseResult,
+          status: "already_notified",
+          matchTitle: match.title,
+          matchPriceEur: match.minPriceEur,
+          error: `already notified at €${item.lastNotifiedPriceEur}`,
+        });
         continue;
       }
 
       const email = await resolveUserEmail(item.userId, emailCache);
       if (!email) {
         errors += 1;
+        missingUserEmail += 1;
+        itemResults.push({
+          ...baseResult,
+          status: "missing_email",
+          matchTitle: match.title,
+          matchPriceEur: match.minPriceEur,
+          error: "could not resolve user email",
+        });
         continue;
       }
 
@@ -183,16 +258,53 @@ export async function notifyWishlistDealMatches(): Promise<WishlistNotifyResult>
       if (error) {
         console.error("[wishlist-notify] Resend error", error);
         errors += 1;
+        sendFailed += 1;
+        itemResults.push({
+          ...baseResult,
+          status: "send_failed",
+          matchTitle: match.title,
+          matchPriceEur: match.minPriceEur,
+          error: error.message ?? "Resend send failed",
+        });
         continue;
       }
 
       await markWishlistNotified(item.id, match.minPriceEur);
       notified += 1;
+      itemResults.push({
+        ...baseResult,
+        status: "notified",
+        matchTitle: match.title,
+        matchPriceEur: match.minPriceEur,
+      });
     } catch (err) {
       console.error("[wishlist-notify] item failed", item.id, err);
       errors += 1;
+      sendFailed += 1;
+      itemResults.push({
+        igdbId: item.igdbId,
+        title: item.title,
+        steamAppId: item.steamAppId,
+        status: "send_failed",
+        canonicalTitle: canonicalizeWishlistMatchTitle(item.title),
+        steamDealCount: 0,
+        titleDealCount: 0,
+        error: err instanceof Error ? err.message : "unexpected failure",
+      });
     }
   }
 
-  return { scanned: items.length, notified, skipped, errors };
+  return {
+    scanned: items.length,
+    notified,
+    skipped,
+    errors,
+    detail: {
+      noMatch,
+      alreadyNotifiedAtThisPrice,
+      missingUserEmail,
+      sendFailed,
+    },
+    items: itemResults,
+  };
 }

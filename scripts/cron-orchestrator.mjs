@@ -34,6 +34,7 @@ function formatDuration(ms) {
 function parseArgs() {
   const args = process.argv.slice(2);
   const local = args.includes("--local");
+  const verbose = args.includes("--verbose");
   let baseUrl = local
     ? "http://localhost:3000"
     : (readEnv("CRON_BASE_URL") ?? "http://localhost:3000");
@@ -61,12 +62,18 @@ function parseArgs() {
 
   return {
     local,
+    verbose,
     baseUrl: baseUrl.replace(/\/$/, ""),
     sources,
   };
 }
 
-async function runSource(source, baseUrl, secret) {
+function printBody(source, body) {
+  console.log(`[${source}] response:`);
+  console.log(JSON.stringify(body, null, 2));
+}
+
+async function runSource(source, baseUrl, secret, verbose) {
   const url = `${baseUrl}/api/cron/${source}`;
   const started = Date.now();
   let tick;
@@ -92,17 +99,24 @@ async function runSource(source, baseUrl, secret) {
       process.stdout.write(
         `\r[${source}] ✓ ${ingested} ingested, ${deleted} deleted in ${elapsed}\n`,
       );
+      if (verbose) {
+        printBody(source, body);
+      }
       return {
         source,
         ok: true,
         dealsIngested: ingested,
         dealsDeleted: deleted,
+        body,
         elapsedMs: Date.now() - started,
       };
     }
 
     const error = body.error ?? `HTTP ${response.status}`;
     process.stdout.write(`\r[${source}] ✗ failed in ${elapsed} — ${error}\n`);
+    if (verbose) {
+      printBody(source, body);
+    }
     if (response.status === 401) {
       console.log(
         `           hint: CRON_SECRET on Vercel must match .env.local exactly, then redeploy`,
@@ -112,6 +126,7 @@ async function runSource(source, baseUrl, secret) {
       source,
       ok: false,
       error,
+      body,
       elapsedMs: Date.now() - started,
     };
   } catch (error) {
@@ -128,12 +143,13 @@ async function runSource(source, baseUrl, secret) {
   }
 }
 
-const { local, baseUrl, sources } = parseArgs();
+const { local, verbose, baseUrl, sources } = parseArgs();
 const secret = readEnv("CRON_SECRET");
 
 console.log(local ? "Cron local" : "Cron remote");
 console.log(`  Base URL: ${baseUrl}`);
 console.log(`  Sources:  ${sources.join(", ")}`);
+console.log(`  Output:   ${verbose ? "verbose" : "summary"}`);
 console.log(
   `  Auth:     ${secret ? "CRON_SECRET set" : "none (dev open if NODE_ENV=development)"}`,
 );
@@ -143,7 +159,7 @@ const runStarted = Date.now();
 const results = [];
 
 for (const source of sources) {
-  results.push(await runSource(source, baseUrl, secret));
+  results.push(await runSource(source, baseUrl, secret, verbose));
 }
 
 const totalDeals = results.reduce(

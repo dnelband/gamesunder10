@@ -1,7 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, like, lte } from "drizzle-orm";
 
-import { normalizeTitle } from "@/lib/deal-utils";
+import {
+  canonicalizeWishlistMatchTitle,
+  normalizeTitle,
+} from "@/lib/deal-utils";
 import {
   groupDealsIntoOffers,
   type DealForGrouping,
@@ -167,28 +170,56 @@ export async function getWishlistItemByIgdbId(
 /**
  * Wishlist is for games that do not yet appear as deals under €10.
  */
-export async function findDealMatchForGame(input: {
-  steamAppId?: string | null;
-  title: string;
-}): Promise<WishlistDealMatch | null> {
-  const steamAppId =
-    input.steamAppId && input.steamAppId !== "0" ? input.steamAppId : null;
+async function findTitleOnlyDealRows(title: string) {
+  const normalized = normalizeTitle(title);
 
-  const listingRows = steamAppId
-    ? await db
-        .select(matchSelect)
-        .from(deals)
-        .where(and(eq(deals.steamAppId, steamAppId), lte(deals.priceEur, MAX_PRICE_EUR)))
-    : await db
-        .select(matchSelect)
-        .from(deals)
-        .where(
-          and(
-            eq(deals.normalizedTitle, normalizeTitle(input.title)),
-            lte(deals.priceEur, MAX_PRICE_EUR),
-          ),
-        );
+  const exactRows = await db
+    .select(matchSelect)
+    .from(deals)
+    .where(
+      and(
+        eq(deals.normalizedTitle, normalized),
+        lte(deals.priceEur, MAX_PRICE_EUR),
+      ),
+    );
 
+  if (exactRows.length > 0) {
+    return exactRows;
+  }
+
+  const canonical = canonicalizeWishlistMatchTitle(title);
+  if (canonical.length < 3) {
+    return [];
+  }
+
+  const candidateRows = await db
+    .select(matchSelect)
+    .from(deals)
+    .where(
+      and(
+        like(deals.normalizedTitle, `${canonical}%`),
+        lte(deals.priceEur, MAX_PRICE_EUR),
+      ),
+    );
+
+  return candidateRows.filter(
+    (row) => canonicalizeWishlistMatchTitle(row.title) === canonical,
+  );
+}
+
+export type WishlistMatchExplanation = {
+  match: WishlistDealMatch | null;
+  wishlistTitle: string;
+  steamAppId: string | null;
+  canonicalTitle: string;
+  matchedVia: "steam" | "title" | null;
+  steamDealCount: number;
+  titleDealCount: number;
+};
+
+function rowsToMatch(
+  listingRows: Awaited<ReturnType<typeof findTitleOnlyDealRows>>,
+): WishlistDealMatch | null {
   if (listingRows.length === 0) {
     return null;
   }
@@ -204,6 +235,59 @@ export async function findDealMatchForGame(input: {
     minPriceEur: lead.minPriceEur,
     title: lead.title,
   };
+}
+
+export async function explainWishlistDealMatch(input: {
+  steamAppId?: string | null;
+  title: string;
+}): Promise<WishlistMatchExplanation> {
+  const steamAppId =
+    input.steamAppId && input.steamAppId !== "0" ? input.steamAppId : null;
+
+  let listingRows: Awaited<ReturnType<typeof findTitleOnlyDealRows>> = [];
+  let matchedVia: WishlistMatchExplanation["matchedVia"] = null;
+  let steamDealCount = 0;
+  let titleDealCount = 0;
+
+  if (steamAppId) {
+    const steamRows = await db
+      .select(matchSelect)
+      .from(deals)
+      .where(
+        and(eq(deals.steamAppId, steamAppId), lte(deals.priceEur, MAX_PRICE_EUR)),
+      );
+    steamDealCount = steamRows.length;
+    if (steamRows.length > 0) {
+      listingRows = steamRows;
+      matchedVia = "steam";
+    }
+  }
+
+  if (listingRows.length === 0) {
+    const titleRows = await findTitleOnlyDealRows(input.title);
+    titleDealCount = titleRows.length;
+    if (titleRows.length > 0) {
+      listingRows = titleRows;
+      matchedVia = "title";
+    }
+  }
+
+  return {
+    match: rowsToMatch(listingRows),
+    wishlistTitle: input.title,
+    steamAppId,
+    canonicalTitle: canonicalizeWishlistMatchTitle(input.title),
+    matchedVia,
+    steamDealCount,
+    titleDealCount,
+  };
+}
+
+export async function findDealMatchForGame(input: {
+  steamAppId?: string | null;
+  title: string;
+}): Promise<WishlistDealMatch | null> {
+  return (await explainWishlistDealMatch(input)).match;
 }
 
 export async function hasActiveDealForGame(input: {
