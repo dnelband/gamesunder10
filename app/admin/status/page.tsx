@@ -207,7 +207,7 @@ function PostMvpSection({
           Post-MVP / future
         </h2>
         <p className="text-sm text-muted">
-          Not in scope for MVP (eShop, ITAD, eBay physical, remaining store
+          Not in scope for MVP (eShop, ITAD, remaining store
           product URLs, affiliates, live FX, admin auth).
         </p>
       </div>

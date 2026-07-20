@@ -45,7 +45,7 @@ Deal sources run only via cron route handlers (`/api/cron/<source>`), protected 
 
 | Mode | Sources | Typical use |
 | --- | --- | --- |
-| **Remote** (`pnpm cron`) | `psn`, `xbox`, `ebay` | Hit `CRON_BASE_URL` (production) |
+| **Remote** (`pnpm cron`) | `psn`, `xbox` | Hit `CRON_BASE_URL` (production) |
 | **Local** (`pnpm cron-local`) | `cheapshark` | Hit `http://localhost:3000` with `pnpm dev` running |
 
 Useful scripts:

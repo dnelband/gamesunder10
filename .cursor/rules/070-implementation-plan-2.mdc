@@ -46,7 +46,7 @@ post-MVP task in `implementation-plan-data.ts`.
   actually works, mark it `blocked` or add a note saying what's unverified
   rather than marking it `done` optimistically.
 - MVP vs post-MVP: keep shipped MVP tasks under their phases as `done`. Put
-  deferred work (eShop, ITAD, eBay, remaining store URLs, affiliates, live FX,
+  deferred work (eShop, ITAD, remaining store URLs, affiliates, live FX,
   admin auth) in the `post-mvp` phase.
 
 ## The status route itself

@@ -16,7 +16,7 @@ export interface ImplementationPhase {
 /**
  * Source of truth for /admin/status — keep in sync with what actually ships.
  * MVP: CheapShark (PC) + PSN + Xbox, deals UI, enrichment, product-first links.
- * Explicitly out of MVP: Nintendo eShop, ITAD, eBay physical.
+ * Explicitly out of MVP: Nintendo eShop, ITAD.
  */
 export const implementationPlan: ImplementationPhase[] = [
   {
@@ -222,13 +222,6 @@ export const implementationPlan: ImplementationPhase[] = [
         title: "IsThereAnyDeal fetcher + normalizer",
         status: "planned",
         notes: "Optional — CheapShark already covers most PC storefronts.",
-      },
-      {
-        id: "ebay-physical",
-        title: "eBay Browse API (DE) physical games under €10",
-        status: "blocked",
-        notes:
-          "PoC coded; waiting on eBay Developers Program approval.",
       },
       {
         id: "store-url-remaining",

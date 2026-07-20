@@ -103,13 +103,6 @@ export function linkBuilderStatusForStore(input: {
       detail: "Xbox /games/store/{title-slug}/{productId}",
     };
   }
-  if (input.source === "ebay") {
-    return {
-      kind: "product",
-      label: "product",
-      detail: "eBay item URL from Browse API",
-    };
-  }
 
   if (input.source === "cheapshark") {
     const entry = BY_NAME.get(input.storeName.toLowerCase());
