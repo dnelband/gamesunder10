@@ -15,7 +15,8 @@
     "cron-local": "node scripts/cron-orchestrator.mjs --local --verbose",
     "cron-local:quiet": "node scripts/cron-orchestrator.mjs --local",
     "cron:local-once": "bash scripts/run-local-cron.sh",
-    "test": "tsx --test $(find lib -name '*.test.ts' | sort)",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "smoke:store-urls": "npx tsx --env-file=.env.local scripts/smoke-store-urls.ts",
     "prepare": "husky"
   },
@@ -36,6 +37,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.10",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
@@ -43,6 +45,7 @@
     "husky": "^9.1.7",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

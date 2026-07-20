@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, expect, it } from "vitest";
 
 import {
   canonicalizeWishlistMatchTitle,
@@ -8,73 +7,65 @@ import {
 
 describe("canonicalizeWishlistMatchTitle", () => {
   it("strips deluxe edition suffix", () => {
-    assert.equal(
+    expect(
       canonicalizeWishlistMatchTitle(
         "SYNDUALITY: Echo of Ada Deluxe Edition",
       ),
-      "synduality echo of ada",
-    );
+    ).toBe("synduality echo of ada");
   });
 
   it("strips ultimate edition suffix", () => {
-    assert.equal(
+    expect(
       canonicalizeWishlistMatchTitle(
         "SYNDUALITY: Echo of Ada Ultimate Edition",
       ),
-      "synduality echo of ada",
-    );
+    ).toBe("synduality echo of ada");
   });
 
   it("leaves base title unchanged", () => {
-    assert.equal(
-      canonicalizeWishlistMatchTitle("SYNDUALITY: Echo of Ada"),
+    expect(canonicalizeWishlistMatchTitle("SYNDUALITY: Echo of Ada")).toBe(
       "synduality echo of ada",
     );
   });
 
   it("does not strip unrelated trailing words", () => {
-    assert.equal(
+    expect(
       canonicalizeWishlistMatchTitle("SYNDUALITY: Echo of Ada Fan Pack"),
-      "synduality echo of ada fan pack",
-    );
+    ).toBe("synduality echo of ada fan pack");
   });
 });
 
 describe("wishlistTitlesMatch", () => {
   it("matches base game to deluxe edition", () => {
-    assert.equal(
+    expect(
       wishlistTitlesMatch(
         "SYNDUALITY: Echo of Ada",
         "SYNDUALITY: Echo of Ada Deluxe Edition",
       ),
-      true,
-    );
+    ).toBe(true);
   });
 
   it("matches base game to ultimate edition", () => {
-    assert.equal(
+    expect(
       wishlistTitlesMatch(
         "SYNDUALITY: Echo of Ada",
         "SYNDUALITY: Echo of Ada Ultimate Edition",
       ),
-      true,
-    );
+    ).toBe(true);
   });
 
   it("does not match unrelated titles", () => {
-    assert.equal(
+    expect(
       wishlistTitlesMatch("Hollow Knight", "Hollow Knight Silksong"),
-      false,
-    );
+    ).toBe(false);
   });
 
   it("still matches exact titles", () => {
-    assert.equal(
+    expect(
       wishlistTitlesMatch(
         "SYNDUALITY: Echo of Ada Deluxe Edition",
         "SYNDUALITY: Echo of Ada Deluxe Edition",
       ),
-      true,
-    );
+    ).toBe(true);
   });
 });
