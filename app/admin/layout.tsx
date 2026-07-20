@@ -1,7 +1,19 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { BrandWordmark } from "@/components/brand-wordmark";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
+};
 
 const NAV = [
   { href: "/admin", label: "Overview", exact: true },

@@ -274,32 +274,31 @@ function dealValues(item: NormalizedDeal) {
   };
 }
 
-function dealUpdateSet(item: NormalizedDeal) {
-  return {
-    title: item.title,
-    normalizedTitle: item.normalizedTitle,
-    steamAppId: item.steamAppId,
-    externalStoreUid: item.externalStoreUid,
-    storeName: item.storeName,
-    priceEur: item.priceEur,
-    originalPriceEur: item.originalPriceEur,
-    discountPercent: item.discountPercent,
-    currencyOriginal: item.currencyOriginal,
-    url: item.url,
-    imageUrl: item.imageUrl,
-    region: item.region,
-    sourceReleaseDate: item.sourceReleaseDate,
-    distributionFormat: item.distributionFormat,
-    genres: item.genres,
-    platforms: item.platforms,
-    rating: item.rating,
-    ratingSource: item.ratingSource,
-    description: item.description,
-    coverUrl: item.coverUrl,
-    screenshotUrls: item.screenshotUrls,
-    fetchedAt: item.fetchedAt,
-  };
-}
+/** Conflict update set for multi-row upsert — takes values from EXCLUDED. */
+const dealConflictUpdateSet = {
+  title: sql`excluded.title`,
+  normalizedTitle: sql`excluded.normalized_title`,
+  steamAppId: sql`excluded.steam_app_id`,
+  externalStoreUid: sql`excluded.external_store_uid`,
+  storeName: sql`excluded.store_name`,
+  priceEur: sql`excluded.price_eur`,
+  originalPriceEur: sql`excluded.original_price_eur`,
+  discountPercent: sql`excluded.discount_percent`,
+  currencyOriginal: sql`excluded.currency_original`,
+  url: sql`excluded.url`,
+  imageUrl: sql`excluded.image_url`,
+  region: sql`excluded.region`,
+  sourceReleaseDate: sql`excluded.source_release_date`,
+  distributionFormat: sql`excluded.distribution_format`,
+  genres: sql`excluded.genres`,
+  platforms: sql`excluded.platforms`,
+  rating: sql`excluded.rating`,
+  ratingSource: sql`excluded.rating_source`,
+  description: sql`excluded.description`,
+  coverUrl: sql`excluded.cover_url`,
+  screenshotUrls: sql`excluded.screenshot_urls`,
+  fetchedAt: sql`excluded.fetched_at`,
+} as const;
 
 /**
  * Upsert this run's deals, then delete any other rows for the same source.
@@ -323,15 +322,13 @@ export async function syncSourceDeals(
   const keepIds = items.map((item) => item.id);
 
   return db.transaction(async (tx) => {
-    for (const item of items) {
-      await tx
-        .insert(deals)
-        .values(dealValues(item))
-        .onConflictDoUpdate({
-          target: deals.id,
-          set: dealUpdateSet(item),
-        });
-    }
+    await tx
+      .insert(deals)
+      .values(items.map(dealValues))
+      .onConflictDoUpdate({
+        target: deals.id,
+        set: dealConflictUpdateSet,
+      });
 
     const removed = await tx
       .delete(deals)
@@ -362,6 +359,9 @@ export async function listGameOffersPage(
   const where = and(...buildDealFilters(filters));
   const requestedPage = Math.max(1, page);
 
+  // TODO: Loads all matching rows, groups in JS, then paginates in memory.
+  // Fine at current catalog size; move grouping/pagination toward SQL when
+  // this query becomes hot as the deals table grows.
   const rows = await db
     .select(groupingColumns)
     .from(deals)

@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Broke Gamer
 
-## Getting Started
+Next.js 16 site that aggregates current game deals **under €10** across PC storefronts (CheapShark) and console storefronts (PSN, Xbox; more sources as they land). Prices are normalized to EUR at ingestion time. Deal data lives in Postgres; rich metadata is enriched from IGDB during cron, not on every page view.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router, Cache Components) + TypeScript + Tailwind
+- **PostgreSQL** via Drizzle (typically Supabase on Vercel)
+- **Supabase Auth** for wishlist / login
+- **Cron ingestion** — never fetch storefronts from user-facing request paths
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local   # fill in values (see below)
+pnpm db:migrate              # apply Drizzle migrations
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy [`.env.example`](.env.example) to `.env.local`. Important variables:
 
-## Learn More
+| Variable | Purpose |
+| --- | --- |
+| `POSTGRES_URL` / `DATABASE_URL` | App DB (Vercel Supabase integration or override) |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Auth (browser + SSR) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Wishlist alert emails (lookup user emails) |
+| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Twitch/IGDB enrichment at cron |
+| `CRON_SECRET` | Bearer token for `/api/cron/*` routes |
+| `CRON_BASE_URL` | Target host for remote cron runs (production URL) |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | Optional wishlist deal alerts |
+| `NEXT_PUBLIC_SITE_URL` | Absolute links in alert emails |
 
-To learn more about Next.js, take a look at the following resources:
+Do **not** wrap env values in quotes in Vercel — the browser and Node clients receive the literal characters.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Cron / ingestion
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Deal sources run only via cron route handlers (`/api/cron/<source>`), protected by `Authorization: Bearer $CRON_SECRET`.
 
-## Deploy on Vercel
+[`scripts/cron-orchestrator.mjs`](scripts/cron-orchestrator.mjs) splits sources because some APIs rate-limit cloud IPs:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Mode | Sources | Typical use |
+| --- | --- | --- |
+| **Remote** (`pnpm cron`) | `psn`, `xbox`, `ebay` | Hit `CRON_BASE_URL` (production) |
+| **Local** (`pnpm cron-local`) | `cheapshark` | Hit `http://localhost:3000` with `pnpm dev` running |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Useful scripts:
+
+```bash
+pnpm cron              # remote sources → CRON_BASE_URL
+pnpm cron-local        # CheapShark → localhost, verbose JSON
+pnpm cron-local:quiet  # same, quieter
+```
+
+Vercel Cron can call the same `/api/cron/*` routes in production for remote-friendly sources; keep CheapShark on the local (or non-Vercel) path.
+
+## Admin
+
+Ops pages live under `/admin` (status, stores, implementation checklist). They are **not** linked from public nav. Auth is still planned — treat the routes as internal for now.
+
+## Tests
+
+```bash
+pnpm test
+```
+
+## Deploy
+
+Deploy on Vercel with the Supabase integration (or set `DATABASE_URL` / `POSTGRES_*` yourself). Set `CRON_SECRET` and wire Vercel Cron to the remote-friendly sources as needed.
