@@ -4,7 +4,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAnonKey, getSupabaseUrl } from "./env";
 
 /**
- * Refresh the auth session cookie on each matched request.
+ * Session cookie refresh for matched requests.
+ *
+ * File name says "middleware" because that was the Next.js 14/15 convention.
+ * In this app it is only imported from the root `proxy.ts` (Next.js 16 rename
+ * of middleware). Do not add a root `middleware.ts` — keep using `proxy.ts`.
+ *
  * Do not use getSession() here for auth decisions — getClaims() validates the JWT.
  */
 export async function updateSession(request: NextRequest) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   countActiveFilters,
@@ -512,12 +512,11 @@ export function DealFilters({
     removeGenre,
   } = useDealFiltersState(initialFilters);
 
-  const platformChoices = useMemo(() => {
-    const fromDb = availablePlatforms.filter((platform) =>
-      (FILTER_PLATFORMS as readonly string[]).includes(platform),
-    );
-    return fromDb.length > 0 ? fromDb : [...FILTER_PLATFORMS];
-  }, [availablePlatforms]);
+  const fromDb = availablePlatforms.filter((platform) =>
+    (FILTER_PLATFORMS as readonly string[]).includes(platform),
+  );
+  const platformChoices =
+    fromDb.length > 0 ? fromDb : [...FILTER_PLATFORMS];
 
   const activeCount = countActiveFilters(filters);
   const ratingLabel = selectedRatingLabel(filters.minRating);

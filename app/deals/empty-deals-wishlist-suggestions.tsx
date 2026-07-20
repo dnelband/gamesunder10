@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import {
   addToWishlistAction,
@@ -26,13 +26,10 @@ function useWishlistSuggestionToggle(wishlistedIgdbIds: number[]) {
   const [removedIds, setRemovedIds] = useState<number[]>([]);
   const [, startTransition] = useTransition();
 
-  const wishlistedIds = useMemo(() => {
-    const ids = new Set([...wishlistedIgdbIds, ...addedIds]);
-    for (const id of removedIds) {
-      ids.delete(id);
-    }
-    return ids;
-  }, [wishlistedIgdbIds, addedIds, removedIds]);
+  const wishlistedIds = new Set([...wishlistedIgdbIds, ...addedIds]);
+  for (const id of removedIds) {
+    wishlistedIds.delete(id);
+  }
 
   async function onAdd(candidate: IgdbSearchCandidate) {
     setError(null);

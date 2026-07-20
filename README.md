@@ -2,6 +2,8 @@
 
 Next.js 16 site that aggregates current game deals **under €10** across PC storefronts (CheapShark) and console storefronts (PSN, Xbox; more sources as they land). Prices are normalized to EUR at ingestion time. Deal data lives in Postgres; rich metadata is enriched from IGDB during cron, not on every page view.
 
+> The npm package / repo folder may still say `gamesunder10` — that is the old project name. The product is **Broke Gamer**.
+
 ## Stack
 
 - **Next.js 16** (App Router, Cache Components) + TypeScript + Tailwind

@@ -2,7 +2,6 @@
 
 import {
   createContext,
-  useCallback,
   useContext,
   useTransition,
   type ReactNode,
@@ -28,14 +27,11 @@ export function DealsNavProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const navigate = useCallback(
-    (href: string) => {
-      startTransition(() => {
-        router.push(href);
-      });
-    },
-    [router],
-  );
+  function navigate(href: string) {
+    startTransition(() => {
+      router.push(href);
+    });
+  }
 
   return (
     <DealsNavContext.Provider value={{ isPending, navigate }}>

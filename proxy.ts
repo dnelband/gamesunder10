@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 
 import { updateSession } from "@/lib/supabase/middleware";
 
+/** Next.js 16 request proxy (replaces legacy root `middleware.ts`). */
 export async function proxy(request: NextRequest) {
   return updateSession(request);
 }
